@@ -12,7 +12,7 @@ FILE_NAME_INDEX = 4
 class Config:
     VERBOSE: bool
     HOST: str
-    PORT: str
+    PORT: int
 
     def __init__(self, args: list):
         self.VERBOSE = args[VERBOSE_INDEX]
