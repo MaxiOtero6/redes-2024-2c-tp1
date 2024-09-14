@@ -1,6 +1,7 @@
 from sys import exit
 from . import constants as const
 from .config import Config, ServerConfig, UploadConfig, DownloadConfig
+from .verbose import Verbose
 
 
 class ArgsParser:
@@ -67,10 +68,10 @@ optional arguments:
         storage_dir_path = None
 
         if "-v" in argv or "--verbose" in argv:
-            verbose = True
+            verbose = Verbose.VERBOSE
 
         elif "-q" in argv or "--quiet" in argv:
-            verbose = False
+            verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
             host = argv[
@@ -87,7 +88,7 @@ optional arguments:
                 self.__get_argv_index(("-s", "--storage"), argv) + 1
             ]
 
-        return ServerConfig((verbose, host, port, storage_dir_path))
+        return ServerConfig([verbose, host, port, storage_dir_path])
 
     def __load_upload_client_args(self, argv: list[str]) -> UploadConfig:
         if "-h" in argv or "--help" in argv:
@@ -100,10 +101,10 @@ optional arguments:
         file_name = None
 
         if "-v" in argv or "--verbose" in argv:
-            verbose = True
+            verbose = Verbose.VERBOSE
 
         elif "-q" in argv or "--quiet" in argv:
-            verbose = False
+            verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
             host = argv[
@@ -125,7 +126,7 @@ optional arguments:
                 self.__get_argv_index(("-n", "--name"), argv) + 1
             ]
 
-        return UploadConfig((verbose, host, port, source_path, file_name))
+        return UploadConfig([verbose, host, port, source_path, file_name])
 
     def __load_download_client_args(self, argv: list[str]) -> DownloadConfig:
         if "-h" in argv or "--help" in argv:
@@ -138,10 +139,10 @@ optional arguments:
         file_name = None
 
         if "-v" in argv or "--verbose" in argv:
-            verbose = True
+            verbose = Verbose.VERBOSE
 
         elif "-q" in argv or "--quiet" in argv:
-            verbose = False
+            verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
             host = argv[
@@ -163,7 +164,7 @@ optional arguments:
                 self.__get_argv_index(("-n", "--name"), argv) + 1
             ]
 
-        return DownloadConfig((verbose, host, port, destination_path, file_name))
+        return DownloadConfig([verbose, host, port, destination_path, file_name])
 
     def load_args(self, argv: list[str]) -> Config:
         match argv[0]:

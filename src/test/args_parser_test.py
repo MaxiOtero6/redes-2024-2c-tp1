@@ -1,6 +1,7 @@
 import unittest
 from lib.args_parser import ArgsParser
 from lib.config import *
+from lib.verbose import Verbose
 
 
 class ArgsParserTest(unittest.TestCase):
@@ -13,7 +14,7 @@ class ArgsParserTest(unittest.TestCase):
 
         config: ServerConfig = parser.load_args(argv)
 
-        self.assertEqual(config.VERBOSE, True)
+        self.assertEqual(config.VERBOSE, Verbose.VERBOSE)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, "8080")
         self.assertEqual(config.STORAGE_DIR_PATH, "repository")
@@ -28,7 +29,7 @@ class ArgsParserTest(unittest.TestCase):
 
         config: UploadConfig = parser.load_args(argv)
 
-        self.assertEqual(config.VERBOSE, False)
+        self.assertEqual(config.VERBOSE, Verbose.QUIET)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, "8080")
         self.assertEqual(config.SOURCE_PATH, "~/Documents/cat.png")
@@ -37,14 +38,14 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_download_client_args(self):
         parser = ArgsParser()
         argv = [
-            "download", "-v", "-H",
+            "download", "-H",
             "127.0.0.1", "-p", "8080", "-d",
             "~/Downloads/dog.png", "-n", "dog"
         ]
 
         config: DownloadConfig = parser.load_args(argv)
 
-        self.assertEqual(config.VERBOSE, True)
+        self.assertEqual(config.VERBOSE, Verbose.DEFAULT)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, "8080")
         self.assertEqual(config.DESTINATION_PATH, "~/Downloads/dog.png")
