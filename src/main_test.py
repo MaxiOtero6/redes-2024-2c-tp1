@@ -1,0 +1,6 @@
+import unittest
+from test.args_parser_test import *
+
+
+if __name__ == '__main__':
+    unittest.main()

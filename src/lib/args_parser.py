@@ -1,11 +1,11 @@
-from sys import argv, exit
-import constants as const
-from config import Config, ServerConfig, UploadConfig, DownloadConfig
+from sys import exit
+from . import constants as const
+from .config import Config, ServerConfig, UploadConfig, DownloadConfig
 
 
 class ArgsParser:
 
-    def __get_argv_index(self, values: tuple[str]) -> int:
+    def __get_argv_index(self, values: tuple[str], argv: list[str]) -> int:
 
         try:
             return argv.index(values[0])
@@ -13,7 +13,7 @@ class ArgsParser:
         except ValueError:
             return argv.index(values[1])
 
-    def __show_help_download(self):
+    def __show_help_download(self) -> None:
         print(
             """usage: download [-h] [-v | -q] [-H ADDR] [-p PORT] [-d FILEPATH] [-n FILENAME]
 <command description>
@@ -28,7 +28,7 @@ optional arguments:
         )
         exit()
 
-    def __show_help_upload(self):
+    def __show_help_upload(self) -> None:
         print(
             """usage: upload [-h] [-v | -q] [-H ADDR] [-p PORT] [-s FILEPATH] [-n FILENAME]
 <command description>
@@ -43,7 +43,7 @@ optional arguments:
         )
         exit()
 
-    def __show_help_server(self):
+    def __show_help_server(self) -> None:
         print(
             """usage: start-server [-h] [-v | -q] [-H ADDR] [-p PORT] [-s DIRPATH]
 <command description>
@@ -57,7 +57,7 @@ optional arguments:
         )
         exit()
 
-    def __load_server_args(self) -> ServerConfig:
+    def __load_server_args(self, argv: list[str]) -> ServerConfig:
         if "-h" in argv or "--help" in argv:
             self.__show_help_server()
 
@@ -74,22 +74,22 @@ optional arguments:
 
         if "-H" in argv or "--host" in argv:
             host = argv[
-                self.__get_argv_index(("-H", "--host")) + 1
+                self.__get_argv_index(("-H", "--host"), argv) + 1
             ]
 
         if "-p" in argv or "--port" in argv:
             port = argv[
-                self.__get_argv_index(("-p", "--port")) + 1
+                self.__get_argv_index(("-p", "--port"), argv) + 1
             ]
 
         if "-s" in argv or "--storage" in argv:
             storage_dir_path = argv[
-                self.__get_argv_index(("-s", "--storage")) + 1
+                self.__get_argv_index(("-s", "--storage"), argv) + 1
             ]
 
         return ServerConfig((verbose, host, port, storage_dir_path))
 
-    def __load_upload_client_args(self) -> UploadConfig:
+    def __load_upload_client_args(self, argv: list[str]) -> UploadConfig:
         if "-h" in argv or "--help" in argv:
             self.__show_help_upload()
 
@@ -107,27 +107,27 @@ optional arguments:
 
         if "-H" in argv or "--host" in argv:
             host = argv[
-                self.__get_argv_index(("-H", "--host")) + 1
+                self.__get_argv_index(("-H", "--host"), argv) + 1
             ]
 
         if "-p" in argv or "--port" in argv:
             port = argv[
-                self.__get_argv_index(("-p", "--port")) + 1
+                self.__get_argv_index(("-p", "--port"), argv) + 1
             ]
 
         if "-s" in argv or "--src" in argv:
             source_path = argv[
-                self.__get_argv_index(("-s", "--src")) + 1
+                self.__get_argv_index(("-s", "--src"), argv) + 1
             ]
 
         if "-n" in argv or "--name" in argv:
             file_name = argv[
-                self.__get_argv_index(("-n", "--name")) + 1
+                self.__get_argv_index(("-n", "--name"), argv) + 1
             ]
 
         return UploadConfig((verbose, host, port, source_path, file_name))
 
-    def __load_download_client_args(self) -> DownloadConfig:
+    def __load_download_client_args(self, argv: list[str]) -> DownloadConfig:
         if "-h" in argv or "--help" in argv:
             self.__show_help_download()
 
@@ -145,36 +145,36 @@ optional arguments:
 
         if "-H" in argv or "--host" in argv:
             host = argv[
-                self.__get_argv_index(("-H", "--host")) + 1
+                self.__get_argv_index(("-H", "--host"), argv) + 1
             ]
 
         if "-p" in argv or "--port" in argv:
             port = argv[
-                self.__get_argv_index(("-p", "--port")) + 1
+                self.__get_argv_index(("-p", "--port"), argv) + 1
             ]
 
         if "-d" in argv or "--dst" in argv:
             destination_path = argv[
-                self.__get_argv_index(("-d", "--dst")) + 1
+                self.__get_argv_index(("-d", "--dst"), argv) + 1
             ]
 
         if "-n" in argv or "--name" in argv:
             file_name = argv[
-                self.__get_argv_index(("-n", "--name")) + 1
+                self.__get_argv_index(("-n", "--name"), argv) + 1
             ]
 
         return DownloadConfig((verbose, host, port, destination_path, file_name))
 
-    def load_args(self) -> Config:
+    def load_args(self, argv: list[str]) -> Config:
         match argv[0]:
             case const.DOWNLOAD_CLIENT:
-                return self.__load_download_client_args()
+                return self.__load_download_client_args(argv)
 
             case const.UPLOAD_CLIENT:
-                return self.__load_upload_client_args()
+                return self.__load_upload_client_args(argv)
 
             case const.SERVER:
-                return self.__load_server_args()
+                return self.__load_server_args(argv)
 
             case _:
                 raise Exception("Unknown executed binary")
