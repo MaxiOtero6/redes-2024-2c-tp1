@@ -1,8 +1,8 @@
 from .verbose import Verbose
 
-DOWNLOAD_CLIENT: str = "download"
-UPLOAD_CLIENT: str = "upload"
-SERVER: str = "start-server"
+DOWNLOAD_CLIENT: str = "download.py"
+UPLOAD_CLIENT: str = "upload.py"
+SERVER: str = "start-server.py"
 
 DEFAULT_VERBOSE: bool = Verbose.DEFAULT
 

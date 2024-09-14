@@ -8,7 +8,7 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_server_args(self):
         parser = ArgsParser()
         argv = [
-            "start-server", "-v", "-H",
+            "start-server.py", "-v", "-H",
             "127.0.0.1", "-p", "8080", "-s", "~/Documents"
         ]
 
@@ -22,7 +22,7 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_upload_client_args(self):
         parser = ArgsParser()
         argv = [
-            "upload", "-q", "-H",
+            "upload.py", "-q", "-H",
             "127.0.0.1", "-p", "8080", "-s",
             "dev/null", "-n", "cat"
         ]
@@ -38,7 +38,7 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_download_client_args(self):
         parser = ArgsParser()
         argv = [
-            "download", "-H",
+            "download.py", "-H",
             "127.0.0.1", "-p", "8080", "-d",
             "dev/null", "-n", "dog"
         ]

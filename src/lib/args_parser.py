@@ -234,8 +234,14 @@ optional arguments:
 
         return DownloadConfig([verbose, host, port, destination_path, file_name])
 
+    def __get_binary(self, path: str) -> str:
+        if '/' in path:
+            path = path.rsplit('/', 1)[1]
+        return path
+
     def load_args(self, argv: list[str]) -> Config:
-        match argv[0]:
+
+        match self.__get_binary(argv[0]):
             case const.DOWNLOAD_CLIENT:
                 return self.__load_download_client_args(argv)
 
