@@ -2,9 +2,15 @@ from sys import exit
 from . import constants as const
 from .config import Config, ServerConfig, UploadConfig, DownloadConfig
 from .verbose import Verbose
+from .args_validator import ArgsValidator
+from .errors.unknown_binary import UnknownBinary
 
 
 class ArgsParser:
+    validator: ArgsValidator
+
+    def __init__(self):
+        self.validator = ArgsValidator()
 
     def __get_argv_index(self, values: tuple[str], argv: list[str]) -> int:
 
@@ -58,11 +64,95 @@ optional arguments:
         )
         exit()
 
+    def __get_host(self, argv: list[str]) -> str:
+        try:
+            idx: int = self.__get_argv_index(("-H", "--host"), argv)
+            return self.validator.validate_host(argv[idx + 1])
+
+        except IndexError:
+            print(
+                "The host address must be specified after -H or --host, e.g: -H 127.0.0.15"
+            )
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
+    def __get_port(self, argv: list[str]) -> int:
+        try:
+            idx: int = self.__get_argv_index(("-p", "--port"), argv)
+            return self.validator.validate_port(argv[idx + 1])
+
+        except IndexError:
+            print("The port number must be specified after -p or --port, e.g: -p 25565")
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
+    def __get_storage_dir(self, argv: list[str]) -> str:
+        try:
+            idx = self.__get_argv_index(("-s", "--storage"), argv)
+            return argv[idx + 1]
+
+        except IndexError:
+            print(
+                "The storage dir must be specified after -s or --storage, e.g: -s ~/storage")
+            exit()
+
+        except Exception as e:
+            print(str(e))
+
+    def __get_source_path(self, argv: list[str]) -> str:
+        try:
+            idx = self.__get_argv_index(("-s", "--src"), argv)
+            return argv[idx + 1]
+
+        except IndexError:
+            print(
+                "The source path must be specified after -s or --src, e.g: -s ~/Documents/file.txt"
+            )
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
+    def __get_destination_path(self, argv: list[str]) -> str:
+        try:
+            idx = self.__get_argv_index(("-d", "--dst"), argv)
+            return argv[idx + 1]
+
+        except IndexError:
+            print(
+                "The destination path must be specified after -d or --dst, e.g: -d ~/Documents/file.txt"
+            )
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
+    def __get_file_name(self, argv: list[str]) -> str:
+        try:
+            idx = self.__get_argv_index(("-n", "--name"), argv)
+            return argv[idx + 1]
+
+        except IndexError:
+            print("The file name must be specified after -n or --name, e.g: -n file.txt")
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
     def __load_server_args(self, argv: list[str]) -> ServerConfig:
         if "-h" in argv or "--help" in argv:
             self.__show_help_server()
 
-        verbose = None
+        verbose = Verbose.DEFAULT
         host = None
         port = None
         storage_dir_path = None
@@ -74,19 +164,13 @@ optional arguments:
             verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
-            host = argv[
-                self.__get_argv_index(("-H", "--host"), argv) + 1
-            ]
+            host = self.__get_host(argv)
 
         if "-p" in argv or "--port" in argv:
-            port = argv[
-                self.__get_argv_index(("-p", "--port"), argv) + 1
-            ]
+            port = self.__get_port(argv)
 
         if "-s" in argv or "--storage" in argv:
-            storage_dir_path = argv[
-                self.__get_argv_index(("-s", "--storage"), argv) + 1
-            ]
+            storage_dir_path = self.__get_storage_dir(argv)
 
         return ServerConfig([verbose, host, port, storage_dir_path])
 
@@ -94,7 +178,7 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_upload()
 
-        verbose = None
+        verbose = Verbose.DEFAULT
         host = None
         port = None
         source_path = None
@@ -107,24 +191,16 @@ optional arguments:
             verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
-            host = argv[
-                self.__get_argv_index(("-H", "--host"), argv) + 1
-            ]
+            host = self.__get_host(argv)
 
         if "-p" in argv or "--port" in argv:
-            port = argv[
-                self.__get_argv_index(("-p", "--port"), argv) + 1
-            ]
+            port = self.__get_port(argv)
 
         if "-s" in argv or "--src" in argv:
-            source_path = argv[
-                self.__get_argv_index(("-s", "--src"), argv) + 1
-            ]
+            source_path = self.__get_source_path(argv)
 
         if "-n" in argv or "--name" in argv:
-            file_name = argv[
-                self.__get_argv_index(("-n", "--name"), argv) + 1
-            ]
+            file_name = self.__get_file_name(argv)
 
         return UploadConfig([verbose, host, port, source_path, file_name])
 
@@ -132,7 +208,7 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_download()
 
-        verbose = None
+        verbose = Verbose.DEFAULT
         host = None
         port = None
         destination_path = None
@@ -145,24 +221,16 @@ optional arguments:
             verbose = Verbose.QUIET
 
         if "-H" in argv or "--host" in argv:
-            host = argv[
-                self.__get_argv_index(("-H", "--host"), argv) + 1
-            ]
+            host = self.__get_host(argv)
 
         if "-p" in argv or "--port" in argv:
-            port = argv[
-                self.__get_argv_index(("-p", "--port"), argv) + 1
-            ]
+            port = self.__get_port(argv)
 
         if "-d" in argv or "--dst" in argv:
-            destination_path = argv[
-                self.__get_argv_index(("-d", "--dst"), argv) + 1
-            ]
+            destination_path = self.__get_destination_path(argv)
 
         if "-n" in argv or "--name" in argv:
-            file_name = argv[
-                self.__get_argv_index(("-n", "--name"), argv) + 1
-            ]
+            file_name = self.__get_file_name(argv)
 
         return DownloadConfig([verbose, host, port, destination_path, file_name])
 
@@ -178,4 +246,4 @@ optional arguments:
                 return self.__load_server_args(argv)
 
             case _:
-                raise Exception("Unknown executed binary")
+                raise UnknownBinary("Unknown executed binary")
