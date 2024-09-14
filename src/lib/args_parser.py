@@ -152,10 +152,10 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_server()
 
-        verbose = Verbose.DEFAULT
-        host = None
-        port = None
-        storage_dir_path = None
+        verbose = const.DEFAULT_VERBOSE
+        host = const.DEFAULT_SERVER_HOST
+        port = const.DEFAULT_SERVER_PORT
+        storage_dir_path = const.DEFAULT_SERVER_STORAGE_DIR_PATH
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -178,11 +178,11 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_upload()
 
-        verbose = Verbose.DEFAULT
-        host = None
-        port = None
-        source_path = None
+        verbose = const.DEFAULT_VERBOSE
+        host = const.DEFAULT_SERVER_HOST
+        port = const.DEFAULT_SERVER_PORT
         file_name = None
+        source_path = None
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -208,10 +208,10 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_download()
 
-        verbose = Verbose.DEFAULT
-        host = None
-        port = None
-        destination_path = None
+        verbose = const.DEFAULT_VERBOSE
+        host = const.DEFAULT_SERVER_HOST
+        port = const.DEFAULT_SERVER_PORT
+        destination_path = const.DEFAULT_DOWNLOAD_DESTINATION_PATH
         file_name = None
 
         if "-v" in argv or "--verbose" in argv:
