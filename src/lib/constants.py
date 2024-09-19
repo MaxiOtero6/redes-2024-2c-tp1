@@ -5,6 +5,7 @@ UPLOAD_CLIENT: str = "upload.py"
 SERVER: str = "start-server.py"
 
 DEFAULT_VERBOSE: bool = Verbose.DEFAULT
+DEFAULT_ALGORITHM: str = "sw"
 
 DEFAULT_SERVER_HOST: str = "127.0.0.1"
 DEFAULT_SERVER_PORT: int = 8080

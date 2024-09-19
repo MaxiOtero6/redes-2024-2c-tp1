@@ -22,7 +22,7 @@ class ArgsParser:
 
     def __show_help_download(self) -> None:
         print(
-            """usage: download [-h] [-v | -q] [-H ADDR] [-p PORT] [-d FILEPATH] [-n FILENAME]
+            """usage: download [-h] [-v | -q] [-H ADDR] [-p PORT] [-d FILEPATH] [-n FILENAME] [-a ALGORITHM]
 <command description>
 optional arguments:
     -h, --help show this help message and exit
@@ -31,36 +31,39 @@ optional arguments:
     -H, --host server IP address
     -p, --port server port
     -d, --dst destination file path
-    -n, --name file name"""
+    -n, --name file name
+    -a, --algorithm data transfer algorithm [sw | sack]"""
         )
         exit()
 
     def __show_help_upload(self) -> None:
         print(
-            """usage: upload [-h] [-v | -q] [-H ADDR] [-p PORT] [-s FILEPATH] [-n FILENAME]
+            """usage: upload [-h] [-v | -q] [-H ADDR] [-p PORT] [-s FILEPATH] [-n FILENAME] [-a ALGORITHM]
 <command description>
 optional arguments:
--h, --help show this help message and exit
--v, --verbose increase output verbosity
--q, --quiet decrease output verbosity
--H, --host server IP address
--p, --port server port
--s, --src source file path
--n, --name file name"""
+    -h, --help show this help message and exit
+    -v, --verbose increase output verbosity
+    -q, --quiet decrease output verbosity
+    -H, --host server IP address
+    -p, --port server port
+    -s, --src source file path
+    -n, --name file name
+    -a, --algorithm data transfer algorithm [sw | sack]"""
         )
         exit()
 
     def __show_help_server(self) -> None:
         print(
-            """usage: start-server [-h] [-v | -q] [-H ADDR] [-p PORT] [-s DIRPATH]
+            """usage: start-server [-h] [-v | -q] [-H ADDR] [-p PORT] [-s DIRPATH] [-a ALGORITHM]
 <command description>
 optional arguments:
--h, --help show this help message and exit
--v, --verbose increase output verbosity
--q, --quiet decrease output verbosity
--H, --host service IP address
--p, --port service port
--s, --storage storage dir path"""
+    -h, --help show this help message and exit
+    -v, --verbose increase output verbosity
+    -q, --quiet decrease output verbosity
+    -H, --host service IP address
+    -p, --port service port
+    -s, --storage storage dir path
+    -a, --algorithm data transfer algorithm [sw | sack]"""
         )
         exit()
 
@@ -147,6 +150,19 @@ optional arguments:
         except Exception as e:
             print(str(e))
             exit()
+            
+    def __get_algorithm(self, argv: list[str]) -> str: 
+        try:
+            idx = self.__get_argv_index(("-a", "--algorithm"), argv)
+            return self.validator.validate_algorithm(argv[idx + 1])
+
+        except IndexError:
+            print("The algorithm must be specified after -a or --algorithm, e.g: -a sw")
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
 
     def __load_server_args(self, argv: list[str]) -> ServerConfig:
         if "-h" in argv or "--help" in argv:
@@ -156,6 +172,7 @@ optional arguments:
         host = const.DEFAULT_SERVER_HOST
         port = const.DEFAULT_SERVER_PORT
         storage_dir_path = const.DEFAULT_SERVER_STORAGE_DIR_PATH
+        algorithm = const.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -171,8 +188,11 @@ optional arguments:
 
         if "-s" in argv or "--storage" in argv:
             storage_dir_path = self.__get_storage_dir(argv)
+            
+        if "-a" in argv or "--algorithm" in argv:
+            algorithm = self.__get_algorithm(argv)
 
-        return ServerConfig([verbose, host, port, storage_dir_path])
+        return ServerConfig([verbose, host, port, algorithm, storage_dir_path])
 
     def __load_upload_client_args(self, argv: list[str]) -> UploadConfig:
         if "-h" in argv or "--help" in argv:
@@ -183,6 +203,7 @@ optional arguments:
         port = const.DEFAULT_SERVER_PORT
         file_name = None
         source_path = None
+        algorithm = const.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -201,8 +222,11 @@ optional arguments:
 
         if "-n" in argv or "--name" in argv:
             file_name = self.__get_file_name(argv)
+            
+        if "-a" in argv or "--algorithm" in argv:
+            algorithm = self.__get_algorithm(argv)
 
-        return UploadConfig([verbose, host, port, source_path, file_name])
+        return UploadConfig([verbose, host, port, algorithm, source_path, file_name])
 
     def __load_download_client_args(self, argv: list[str]) -> DownloadConfig:
         if "-h" in argv or "--help" in argv:
@@ -213,6 +237,7 @@ optional arguments:
         port = const.DEFAULT_SERVER_PORT
         destination_path = const.DEFAULT_DOWNLOAD_DESTINATION_PATH
         file_name = None
+        algorithm = const.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -231,8 +256,11 @@ optional arguments:
 
         if "-n" in argv or "--name" in argv:
             file_name = self.__get_file_name(argv)
+            
+        if "-a" in argv or "--algorithm" in argv:
+            algorithm = self.__get_algorithm(argv)
 
-        return DownloadConfig([verbose, host, port, destination_path, file_name])
+        return DownloadConfig([verbose, host, port, algorithm, destination_path, file_name])
 
     def __get_binary(self, path: str) -> str:
         if '/' in path:

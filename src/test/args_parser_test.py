@@ -9,7 +9,8 @@ class ArgsParserTest(unittest.TestCase):
         parser = ArgsParser()
         argv = [
             "start-server.py", "-v", "-H",
-            "127.0.0.1", "-p", "8080", "-s", "~/Documents"
+            "127.0.0.1", "-p", "8080", "-s", "~/Documents",
+            "-a", "sw"
         ]
 
         config: ServerConfig = parser.load_args(argv)
@@ -17,6 +18,7 @@ class ArgsParserTest(unittest.TestCase):
         self.assertEqual(config.VERBOSE, Verbose.VERBOSE)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, 8080)
+        self.assertEqual(config.ALGORITHM, "sw")
         self.assertEqual(config.STORAGE_DIR_PATH, "~/Documents")
 
     def test_load_upload_client_args(self):
@@ -24,7 +26,8 @@ class ArgsParserTest(unittest.TestCase):
         argv = [
             "upload.py", "-q", "-H",
             "127.0.0.1", "-p", "8080", "-s",
-            "dev/null", "-n", "cat"
+            "dev/null", "-n", "cat",
+            "-a", "sack"
         ]
 
         config: UploadConfig = parser.load_args(argv)
@@ -32,6 +35,7 @@ class ArgsParserTest(unittest.TestCase):
         self.assertEqual(config.VERBOSE, Verbose.QUIET)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, 8080)
+        self.assertEqual(config.ALGORITHM, "sack")
         self.assertEqual(config.SOURCE_PATH, "dev/null")
         self.assertEqual(config.FILE_NAME, "cat")
 
@@ -48,5 +52,6 @@ class ArgsParserTest(unittest.TestCase):
         self.assertEqual(config.VERBOSE, Verbose.DEFAULT)
         self.assertEqual(config.HOST, "127.0.0.1")
         self.assertEqual(config.PORT, 8080)
+        self.assertEqual(config.ALGORITHM, "sw")
         self.assertEqual(config.DESTINATION_PATH, "dev/null")
         self.assertEqual(config.FILE_NAME, "dog")
