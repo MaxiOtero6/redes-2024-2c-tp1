@@ -7,5 +7,6 @@ def main():
     parser = ArgsParser()
     config: DownloadConfig = parser.load_args(argv)
 
+
 if __name__ == "__main__":
     main()

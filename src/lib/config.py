@@ -22,6 +22,7 @@ class Config:
         self.PORT = args[PORT_INDEX]
         self.ALGORITHM = args[ALGORITHM_INDEX]
 
+
 class DownloadConfig(Config):
     DESTINATION_PATH: str
     FILE_NAME: str

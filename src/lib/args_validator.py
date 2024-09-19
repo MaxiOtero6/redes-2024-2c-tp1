@@ -19,8 +19,8 @@ class ArgsValidator:
 
         raise PortOutOfBounds("Port must be between 0 and 65535")
 
-    def validate_algorithm(self, algo: str) -> str: 
+    def validate_algorithm(self, algo: str) -> str:
         if (algo != "sw" and algo != "sack"):
             raise ValueError("Algorithm must be \'sw\' or \'sack\'")
-        
+
         return algo

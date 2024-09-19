@@ -150,8 +150,8 @@ optional arguments:
         except Exception as e:
             print(str(e))
             exit()
-            
-    def __get_algorithm(self, argv: list[str]) -> str: 
+
+    def __get_algorithm(self, argv: list[str]) -> str:
         try:
             idx = self.__get_argv_index(("-a", "--algorithm"), argv)
             return self.validator.validate_algorithm(argv[idx + 1])
@@ -188,7 +188,7 @@ optional arguments:
 
         if "-s" in argv or "--storage" in argv:
             storage_dir_path = self.__get_storage_dir(argv)
-            
+
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
@@ -222,7 +222,7 @@ optional arguments:
 
         if "-n" in argv or "--name" in argv:
             file_name = self.__get_file_name(argv)
-            
+
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
@@ -256,7 +256,7 @@ optional arguments:
 
         if "-n" in argv or "--name" in argv:
             file_name = self.__get_file_name(argv)
-            
+
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
