@@ -20,24 +20,23 @@ class Server:
         self.__skt.sendto(response.encode(), address)
         return file_name
 
-    def __ack_file_received(self, address : (str, int)):
-        response = SWPacket(0, 1, True, False, True, b"")
-        self.__skt.sendto(response.encode(), address)
-
     def __recv_file_data(self, file_path: str):
         (data, address) = self.__skt.recvfrom(520)
         packet = SWPacket.decode(data)
         last_seq_number = packet.seq_number
+        file_buff = [packet.payload]
         while not packet.fin:
             if last_seq_number != packet.seq_number:
-                with open(file_path, "wb") as file:
-                    file.write(packet.payload)
-                    last_seq_number = packet.seq_number
+                file_buff.append(packet.payload)
+                last_seq_number = packet.seq_number
             response = SWPacket(packet.ack_number, packet.seq_number, False, False, True, b"")
             self.__skt.sendto(response.encode(), address)
             (data, address) = self.__skt.recvfrom(520)
             packet = SWPacket.decode(data)
-        self.__ack_file_received(address)
+
+        with open(file_path, "wb") as file:
+            for data in file_buff:
+                file.write(data)
 
 
     def run(self):

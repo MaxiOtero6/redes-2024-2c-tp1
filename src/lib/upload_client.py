@@ -1,6 +1,7 @@
 from lib.sw_packet import SWPacket
 from lib.config import UploadConfig
 import socket
+import os
 
 class UploadClient:
     def __init__(self, config : UploadConfig):
@@ -53,12 +54,7 @@ class UploadClient:
                               1 if self.__sequence_number == 0 else 0,
                               False, True, False, b"")
         self.__skt.sendto(fin_packet.encode(), self.__destination_address)
-        response = self.__skt.recv(520)
-        response_packet = SWPacket.decode(response)
-        while not response_packet.ack or response_packet.ack_number != self.__sequence_number:
-            self.__skt.sendto(fin_packet.encode(), self.__destination_address)
-            response = self.__skt.recv(520)
-            response_packet = SWPacket.decode(response)
+        print("Fin packet sent")
 
     def run(self):
         print("Starting file upload")
