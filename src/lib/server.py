@@ -21,19 +21,21 @@ class Server:
         self.__skt.sendto(response.encode(), address)
         return packet.payload
 
-    def __recv_file_name(self):
-        (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
-        packet = SWPacket.decode(data)
-
+    def __wait_for_ack(self, address, packet):
         while packet.seq_number == self.__last_ack:
             response = SWPacket(packet.ack_number, self.__last_ack, True, False, True, b"")
             self.__skt.sendto(response.encode(), address)
             (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
             packet = SWPacket.decode(data)
+        return packet
 
-        file_name = packet.payload.decode()
+    def __recv_file_name(self):
+        (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
+        packet = SWPacket.decode(data)
+        response_packet = self.__wait_for_ack(address, packet)
+        file_name = response_packet.payload.decode()
         print(f"File name received: {file_name}")
-        response = SWPacket(packet.ack_number, packet.seq_number, True, False, True, b"")
+        response = SWPacket(packet.ack_number, response_packet.seq_number, True, False, True, b"")
         self.__skt.sendto(response.encode(), address)
         self.__last_ack = packet.seq_number
         return (file_name, address)
@@ -41,15 +43,9 @@ class Server:
     def __recv_ready(self):
         (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
         packet = SWPacket.decode(data)
-
-        while packet.seq_number == self.__last_ack:
-            response = SWPacket(packet.ack_number, self.__last_ack, True, False, True, b"")
-            self.__skt.sendto(response.encode(), address)
-            (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
-            packet = SWPacket.decode(data)
-
+        response_packet = self.__wait_for_ack(address, packet)
         print("Ready for file received")
-        return (packet, address)
+        return (response_packet, address)
 
     def __recv_file_data(self, file_path: str):
         (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
