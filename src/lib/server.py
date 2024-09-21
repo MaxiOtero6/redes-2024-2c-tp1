@@ -4,8 +4,8 @@ import socket
 
 class Server:
     def __init__(self, config: ServerConfig):
-        self.__verbose : bool = config.VERBOSE
-        self.__storage_dir : str = config.STORAGE_DIR_PATH
+        self.config = config
+
         self.__skt : socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__skt.bind((config.HOST, config.PORT))
 
@@ -70,7 +70,7 @@ class Server:
 
     def __run_upload(self):
         (file_name, address) = self.__recv_file_name()
-        file_path = f"{self.__storage_dir}/{file_name}"
+        file_path = f"{self.config.STORAGE_DIR_PATH}/{file_name}"
         self.__recv_file_data(file_path)
         print(f"File received: {file_name}")
         self.__skt.close()
@@ -100,7 +100,7 @@ class Server:
 
     def __run_download(self):
         (file_name, address) = self.__recv_file_name()
-        file_path = f"{self.__storage_dir}/{file_name}"
+        file_path = f"{self.config.STORAGE_DIR_PATH}/{file_name}"
         self.__send_file_data(file_path)
         print(f"File sent: {file_name}")
         self.__skt.close()

@@ -4,11 +4,8 @@ import socket
 
 class DownloadClient:
     def __init__(self, config : DownloadConfig):
+        self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__verbose : bool = config.VERBOSE
-        self.__server_address : (str, int) = (config.HOST, config.PORT)
-        self.__destination_path : str = config.DESTINATION_PATH
-        self.__file_name : str = config.FILE_NAME
         self.__sequence_number = 0
 
     def __swap_sequence_number(self):
@@ -18,7 +15,7 @@ class DownloadClient:
         (response, address) = self.__skt.recvfrom(520)
         response_packet = SWPacket.decode(response)
         while not response_packet.ack or response_packet.ack_number != self.__sequence_number:
-            self.__skt.sendto(previous_packet.encode(), self.__server_address)
+            self.__skt.sendto(previous_packet.encode(), (self.__config.HOST, self.__config.PORT))
             response = self.__skt.recv(520)
             response_packet = SWPacket.decode(response)
         return response_packet
@@ -27,7 +24,7 @@ class DownloadClient:
         start_package = SWPacket(self.__sequence_number,
                                  1 if self.__sequence_number == 0 else 0,
                                  True, False, False, b"download")
-        self.__skt.sendto(start_package.encode(), self.__server_address)
+        self.__skt.sendto(start_package.encode(), (self.__config.HOST, self.__config.PORT))
         print("Download start packet sent")
         self.__wait_for_ack(start_package)
         self.__swap_sequence_number()
@@ -36,9 +33,9 @@ class DownloadClient:
     def __send_file_name_request(self):
         file_name_package = SWPacket(self.__sequence_number,
                                      1 if self.__sequence_number == 0 else 0,
-                                     True, False, False, self.__file_name.encode())
-        self.__skt.sendto(file_name_package.encode(), self.__server_address)
-        print(f"File name request sent: {self.__file_name}")
+                                     True, False, False, self.__config.FILE_NAME.encode())
+        self.__skt.sendto(file_name_package.encode(), (self.__config.HOST, self.__config.PORT))
+        print(f"File name request sent: {self.__config.FILE_NAME}")
         self.__wait_for_ack(file_name_package)
         self.__swap_sequence_number()
         print(f"File name ack received")
@@ -47,7 +44,7 @@ class DownloadClient:
         ready_for_file_package = SWPacket(self.__sequence_number,
                                           1 if self.__sequence_number == 0 else 0,
                                           False, False, True, b"Ready")
-        self.__skt.sendto(ready_for_file_package.encode(), self.__server_address)
+        self.__skt.sendto(ready_for_file_package.encode(), (self.__config.HOST, self.__config.PORT))
         print("Ready for file packet sent")
         packet = self.__wait_for_ack(ready_for_file_package)
         print("Receiving file data")
@@ -60,9 +57,9 @@ class DownloadClient:
             self.__swap_sequence_number()
             response = SWPacket(self.__sequence_number, 1 if self.__sequence_number == 0 else 0,
                                 False, False, True, b"")
-            self.__skt.sendto(response.encode(), self.__server_address)
+            self.__skt.sendto(response.encode(), (self.__config.HOST, self.__config.PORT))
             packet = self.__wait_for_ack(response)
-        with open(f"{self.__destination_path}/{self.__file_name}", "wb") as file:
+        with open(f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}", "wb") as file:
             for data in file_buff:
                 file.write(data)
 
@@ -71,5 +68,5 @@ class DownloadClient:
         self.__send_comm_start()
         self.__send_file_name_request()
         self.__recv_file_data()
-        print(f"File received: {self.__file_name}")
+        print(f"File received: {self.__config.FILE_NAME}")
         self.__skt.close()
