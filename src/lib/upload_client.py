@@ -9,25 +9,27 @@ class UploadClient:
         self.__destination_address : (str, int) = (config.HOST, config.PORT)
         self.__source_path : str = config.SOURCE_PATH
         self.__file_name : str = config.FILE_NAME
-
         self.__sequence_number = 0
 
     def __swap_sequence_number(self):
         self.__sequence_number = 1 if self.__sequence_number == 0 else 0
 
-    def __send_comm_start(self):
-        start_package = SWPacket(self.__sequence_number,
-                                 1 if self.__sequence_number == 0 else 0,
-                                 True, False, False, b"upload")
-        self.__skt.sendto(start_package.encode(), self.__destination_address)
-        self.__swap_sequence_number()
-        print("Download start packet sent")
+    def __wait_for_ack(self, previous_packet : SWPacket):
         (response, address) = self.__skt.recvfrom(520)
         response_packet = SWPacket.decode(response)
         while not response_packet.ack or response_packet.ack_number == self.__sequence_number:
-            self.__skt.sendto(start_package.encode(), self.__destination_address)
+            self.__skt.sendto(previous_packet.encode(), self.__destination_address)
             response = self.__skt.recv(520)
             response_packet = SWPacket.decode(response)
+
+    def __send_comm_start(self):
+        start_packet = SWPacket(self.__sequence_number,
+                                 1 if self.__sequence_number == 0 else 0,
+                                 True, False, False, b"upload")
+        self.__skt.sendto(start_packet.encode(), self.__destination_address)
+        self.__swap_sequence_number()
+        print("Upload communication start packet sent")
+        self.__wait_for_ack(start_packet)
         print("Start ack received")
 
     def __send_file_name(self):
@@ -37,12 +39,7 @@ class UploadClient:
         self.__skt.sendto(file_name_package.encode(), self.__destination_address)
         self.__swap_sequence_number()
         print(f"File name sent: {self.__file_name}")
-        (response, address) = self.__skt.recvfrom(520)
-        response_packet = SWPacket.decode(response)
-        while not response_packet.ack or response_packet.ack_number == self.__sequence_number:
-            self.__skt.sendto(file_name_package.encode(), self.__destination_address)
-            response = self.__skt.recv(520)
-            response_packet = SWPacket.decode(response)
+        self.__wait_for_ack(file_name_package)
         print(f"File name ack received")
 
     def __send_file_data(self):
@@ -53,15 +50,10 @@ class UploadClient:
                                   1 if self.__sequence_number == 0 else 0,
                                   False, False, False, data)
                 self.__skt.sendto(packet.encode(), self.__destination_address)
-                response = self.__skt.recv(520)
-                response_packet = SWPacket.decode(response)
-
-                if response_packet.ack and self.__sequence_number == response_packet.ack_number:
-                    print(f"Packet of size {len(data)} sent")
-                    data = file.read(512)
-                    self.__swap_sequence_number()
-                else:
-                    continue
+                self.__swap_sequence_number()
+                self.__wait_for_ack(packet)
+                print(f"Sent packet of size {len(data)}")
+                data = file.read(512)
 
     def __send_comm_fin(self):
         fin_packet = SWPacket(self.__sequence_number,
