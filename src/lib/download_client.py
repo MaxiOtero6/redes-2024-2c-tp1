@@ -1,5 +1,6 @@
 from lib.sw_packet import SWPacket
 from lib.config import DownloadConfig
+from lib.constants import *
 import socket
 
 class DownloadClient:
@@ -12,11 +13,11 @@ class DownloadClient:
         self.__sequence_number = 1 if self.__sequence_number == 0 else 0
 
     def __wait_for_ack(self, previous_packet : SWPacket):
-        (response, address) = self.__skt.recvfrom(520)
+        (response, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
         response_packet = SWPacket.decode(response)
         while not response_packet.ack or response_packet.ack_number != self.__sequence_number:
             self.__skt.sendto(previous_packet.encode(), (self.__config.HOST, self.__config.PORT))
-            response = self.__skt.recv(520)
+            response = self.__skt.recv(MAX_PACKET_SIZE_SW)
             response_packet = SWPacket.decode(response)
         return response_packet
 

@@ -1,5 +1,6 @@
 from lib.sw_packet import SWPacket
 from lib.config import UploadConfig
+from lib.constants import *
 import socket
 
 class UploadClient:
@@ -13,11 +14,11 @@ class UploadClient:
         self.__sequence_number = 1 if self.__sequence_number == 0 else 0
 
     def __wait_for_ack(self, previous_packet : SWPacket):
-        (response, address) = self.__skt.recvfrom(520)
+        (response, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
         response_packet = SWPacket.decode(response)
         while not response_packet.ack or response_packet.ack_number != self.__sequence_number:
             self.__skt.sendto(previous_packet.encode(), (self.__config.HOST, self.__config.PORT))
-            response = self.__skt.recv(520)
+            response = self.__skt.recv(MAX_PACKET_SIZE_SW)
             response_packet = SWPacket.decode(response)
 
     def __send_comm_start(self):
@@ -42,7 +43,7 @@ class UploadClient:
 
     def __send_file_data(self):
         with open(self.__config.SOURCE_PATH, "rb") as file:
-            data = file.read(512)
+            data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:
                 packet = SWPacket(self.__sequence_number,
                                   1 if self.__sequence_number == 0 else 0,
@@ -51,7 +52,7 @@ class UploadClient:
                 self.__wait_for_ack(packet)
                 print(f"Sent packet of size {len(data)}")
                 self.__swap_sequence_number()
-                data = file.read(512)
+                data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
         fin_packet = SWPacket(self.__sequence_number,
