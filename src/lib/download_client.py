@@ -74,7 +74,7 @@ class DownloadClient:
             True,
             False,
             True,
-            b"Ready",
+            b"",
         )
         self.__skt.sendto(
             ready_for_file_package.encode(), (self.__config.HOST, self.__config.PORT)
