@@ -3,15 +3,15 @@ from struct import pack, unpack
 
 class SWPacket:
     """
-        +--------------------+---------------+--------+----------+
-        |  Sequence Number 1B | ACK Number 1B | SYN 1B | FIN 1B  |
-        +--------------------+---------------+--------+----------+
-        |               ACK 1B      |       Padding 3B           |
-        +---------------------+---------------------+------------+
-        |                                                        |
-        |                      Data 512B                         |
-        |                                                        |
-        +---------------------+---------------------+------------+
+    +--------------------+---------------+--------+----------+
+    |  Sequence Number 1B | ACK Number 1B | SYN 1B | FIN 1B  |
+    +--------------------+---------------+--------+----------+
+    |   ACK 1B    |   UPL 1B   |    DWL 1B    |  Padding 1B  |
+    +---------------------+---------------------+------------+
+    |                                                        |
+    |                      Data 512B                         |
+    |                                                        |
+    +---------------------+---------------------+------------+
     """
 
     seq_number: int
@@ -19,25 +19,44 @@ class SWPacket:
     syn: bool
     fin: bool
     ack: bool
+    upl: bool
+    dwl: bool
     payload: bytes
 
-    def __init__(self, seq_number: int, ack_number: int, syn: bool, fin: bool, ack: bool, data: bytes):
+    def __init__(
+        self,
+        seq_number: int,
+        ack_number: int,
+        syn: bool,
+        fin: bool,
+        ack: bool,
+        upl: bool,
+        dwl: bool,
+        data: bytes,
+    ):
         self.seq_number = seq_number
         self.payload = data
         self.ack_number = ack_number
         self.syn = syn
         self.fin = fin
         self.ack = ack
-        # seq_number == 1 ? 0 : 1
+        self.upl = upl
+        self.dwl = dwl
 
     def encode(self) -> bytes:
         data: bytes = b""
 
         data += pack(
-            "!BBBBB", self.seq_number, self.ack_number,
-            self.syn, self.fin, self.ack
+            "!BBBBBBB",
+            self.seq_number,
+            self.ack_number,
+            self.syn,
+            self.fin,
+            self.ack,
+            self.upl,
+            self.dwl,
         )
-        data += b"\x00\x00\x00"  # padding
+        data += b"\x00"  # padding
         data += self.payload
 
         return data
@@ -50,13 +69,13 @@ class SWPacket:
         fin: bool
         ack: bool
 
-        idx_before_padding: int = 5
+        idx_before_padding: int = 7
         idx_after_padding: int = 8
 
-        seq_number, ack_number, syn, fin, ack = unpack(
-            "!BBBBB", data[:idx_before_padding:]
+        seq_number, ack_number, syn, fin, ack, upl, dwl = unpack(
+            "!BBBBBBB", data[:idx_before_padding:]
         )
 
         payload: bytes = data[idx_after_padding::]
 
-        return SWPacket(seq_number, ack_number, syn, fin, ack, payload)
+        return SWPacket(seq_number, ack_number, syn, fin, ack, upl, dwl, payload)
