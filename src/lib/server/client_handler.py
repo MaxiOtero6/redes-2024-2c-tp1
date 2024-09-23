@@ -1,5 +1,4 @@
 import queue
-from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
 from lib.packets.sw_packet import SWPacket
 
 
