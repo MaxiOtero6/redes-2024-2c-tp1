@@ -1,5 +1,5 @@
 import unittest
-from lib.sack_packet import SACKPacket
+from lib.packets.sack_packet import SACKPacket
 
 
 class SACKPacketTest(unittest.TestCase):

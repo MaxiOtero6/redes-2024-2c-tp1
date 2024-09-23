@@ -1,13 +1,13 @@
-from lib.args_parser import ArgsParser
+from lib.arguments.args_parser import ArgsParser
 from lib.config import ServerConfig
 from sys import argv
-from lib.server import Server
+from lib.server.server import Server
 
 
 def main():
     parser = ArgsParser()
     config: ServerConfig = parser.load_args(argv)
-    sv : Server = Server(config)
+    sv: Server = Server(config)
     sv.run()
 
 

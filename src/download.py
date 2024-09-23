@@ -1,13 +1,13 @@
-from lib.args_parser import ArgsParser
+from lib.arguments.args_parser import ArgsParser
 from lib.config import DownloadConfig
 from sys import argv
-from lib.download_client import DownloadClient
+from lib.client.download_client import DownloadClient
 
 
 def main():
     parser = ArgsParser()
     config: DownloadConfig = parser.load_args(argv)
-    client : DownloadClient = DownloadClient(config)
+    client: DownloadClient = DownloadClient(config)
     client.run()
 
 

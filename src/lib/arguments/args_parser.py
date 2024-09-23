@@ -1,9 +1,13 @@
 from sys import exit
-from . import constants as const
-from .config import Config, ServerConfig, UploadConfig, DownloadConfig
-from .verbose import Verbose
-from .args_validator import ArgsValidator
-from .errors.unknown_binary import UnknownBinary
+
+from lib.arguments import constants
+from lib.arguments.args_validator import ArgsValidator
+from lib.client.download_config import DownloadConfig
+from lib.client.upload_config import UploadConfig
+from lib.config import Config
+from lib.errors.unknown_binary import UnknownBinary
+from lib.server.server_config import ServerConfig
+from lib.verbose import Verbose
 
 
 class ArgsParser:
@@ -102,7 +106,8 @@ optional arguments:
 
         except IndexError:
             print(
-                "The storage dir must be specified after -s or --storage, e.g: -s ~/storage")
+                "The storage dir must be specified after -s or --storage, e.g: -s ~/storage"
+            )
             exit()
 
         except Exception as e:
@@ -144,7 +149,9 @@ optional arguments:
             return argv[idx + 1]
 
         except IndexError:
-            print("The file name must be specified after -n or --name, e.g: -n file.txt")
+            print(
+                "The file name must be specified after -n or --name, e.g: -n file.txt"
+            )
             exit()
 
         except Exception as e:
@@ -168,11 +175,11 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_server()
 
-        verbose = const.DEFAULT_VERBOSE
-        host = const.DEFAULT_SERVER_HOST
-        port = const.DEFAULT_SERVER_PORT
-        storage_dir_path = const.DEFAULT_SERVER_STORAGE_DIR_PATH
-        algorithm = const.DEFAULT_ALGORITHM
+        verbose = constants.DEFAULT_VERBOSE
+        host = constants.DEFAULT_SERVER_HOST
+        port = constants.DEFAULT_SERVER_PORT
+        storage_dir_path = constants.DEFAULT_SERVER_STORAGE_DIR_PATH
+        algorithm = constants.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -198,12 +205,12 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_upload()
 
-        verbose = const.DEFAULT_VERBOSE
-        host = const.DEFAULT_SERVER_HOST
-        port = const.DEFAULT_SERVER_PORT
+        verbose = constants.DEFAULT_VERBOSE
+        host = constants.DEFAULT_SERVER_HOST
+        port = constants.DEFAULT_SERVER_PORT
         file_name = None
         source_path = None
-        algorithm = const.DEFAULT_ALGORITHM
+        algorithm = constants.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -232,12 +239,12 @@ optional arguments:
         if "-h" in argv or "--help" in argv:
             self.__show_help_download()
 
-        verbose = const.DEFAULT_VERBOSE
-        host = const.DEFAULT_SERVER_HOST
-        port = const.DEFAULT_SERVER_PORT
-        destination_path = const.DEFAULT_DOWNLOAD_DESTINATION_PATH
+        verbose = constants.DEFAULT_VERBOSE
+        host = constants.DEFAULT_SERVER_HOST
+        port = constants.DEFAULT_SERVER_PORT
+        destination_path = constants.DEFAULT_DOWNLOAD_DESTINATION_PATH
         file_name = None
-        algorithm = const.DEFAULT_ALGORITHM
+        algorithm = constants.DEFAULT_ALGORITHM
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -260,23 +267,25 @@ optional arguments:
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
-        return DownloadConfig([verbose, host, port, algorithm, destination_path, file_name])
+        return DownloadConfig(
+            [verbose, host, port, algorithm, destination_path, file_name]
+        )
 
     def __get_binary(self, path: str) -> str:
-        if '/' in path:
-            path = path.rsplit('/', 1)[1]
+        if "/" in path:
+            path = path.rsplit("/", 1)[1]
         return path
 
     def load_args(self, argv: list[str]) -> Config:
 
         match self.__get_binary(argv[0]):
-            case const.DOWNLOAD_CLIENT:
+            case constants.DOWNLOAD_CLIENT:
                 return self.__load_download_client_args(argv)
 
-            case const.UPLOAD_CLIENT:
+            case constants.UPLOAD_CLIENT:
                 return self.__load_upload_client_args(argv)
 
-            case const.SERVER:
+            case constants.SERVER:
                 return self.__load_server_args(argv)
 
             case _:

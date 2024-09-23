@@ -1,6 +1,6 @@
-from lib.sw_packet import SWPacket
+from lib.packets.sw_packet import SWPacket
 from lib.config import UploadConfig
-from lib.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
+from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
 import socket
 
 

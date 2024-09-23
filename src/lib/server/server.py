@@ -1,36 +1,16 @@
 from multiprocessing.pool import ThreadPool, multiprocessing
-from lib.sw_packet import SWPacket
+from lib.packets.sw_packet import SWPacket
 from lib.config import ServerConfig
-from lib.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
+from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
 import socket
-
-
-class Listener:
-    def __init__(self, config: ServerConfig):
-        self.config = config
-
-        self.__skt: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__skt.bind((config.HOST, config.PORT))
-
-    def listen(self):
-
-
-class Client:
-    def __init__(self, config: ServerConfig):
-        self.config = config
-
-        self.__skt: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__skt.bind((config.HOST, config.PORT))
-
-        self.__last_ack = 0
 
 
 class Server:
     def __init__(self, config: ServerConfig):
         self.config = config
-
-        self.__listener = Listener(config)
-        self.__clients = []
+        self.pool = ThreadPool(multiprocessing.cpu_count())
+        self.__skt: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__skt.bind((config.HOST, config.PORT))
 
     def __recv_request(self):
         (data, address) = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
@@ -194,12 +174,7 @@ class Server:
 
     def run(self):
         print("Server started")
-
-        # First, create a thread pool with the number of threads depending on the processor
-        pool = ThreadPool(multiprocessing.cpu_count())
-
         # Create a listener that listens for incoming requests
-
         self.__listen_requests()
 
         # waits for a request

@@ -1,4 +1,4 @@
-from .verbose import Verbose
+from ..verbose import Verbose
 
 DOWNLOAD_CLIENT: str = "download.py"
 UPLOAD_CLIENT: str = "upload.py"

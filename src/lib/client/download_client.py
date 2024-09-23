@@ -1,6 +1,6 @@
-from lib.sw_packet import SWPacket
+from lib.packets.sw_packet import SWPacket
 from lib.config import DownloadConfig
-from lib.constants import MAX_PACKET_SIZE_SW
+from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
 
 
