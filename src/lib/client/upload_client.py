@@ -1,3 +1,4 @@
+import os
 import time
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
@@ -67,7 +68,10 @@ class UploadClient:
         self.__swap_sequence_number()
 
     def __send_file_data(self):
+        file_length = os.path.getsize(self.__config.SOURCE_PATH)
+
         with open(self.__config.SOURCE_PATH, "rb") as file:
+            data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:
                 packet = SWPacket(
@@ -83,7 +87,10 @@ class UploadClient:
                 self.__skt.sendto(
                     packet.encode(), (self.__config.HOST, self.__config.PORT)
                 )
-                print(f"Sent packet of size {len(data)}")
+                data_sent += len(data)
+                print(
+                    f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
+                )
                 self.__wait_for_ack(packet)
                 print("Ack received for packet")
 

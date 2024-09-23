@@ -4,7 +4,7 @@ from lib.server.server_config import ServerConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
 
-from lib.server.client_handler import ClientHandler
+from lib.server.client_handler_sw import ClientHandlerSW
 
 
 class Server:
@@ -21,7 +21,7 @@ class Server:
             data, address = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
 
             if address not in self.__clients_handlers:
-                client = ClientHandler(
+                client = ClientHandlerSW(
                     address, self.__skt, self.__config.STORAGE_DIR_PATH
                 )
                 self.__clients_handlers[address] = client
@@ -29,7 +29,7 @@ class Server:
 
             self.__clients_handlers[address].data_queue.put(data)
 
-    def __handle_client(self, client: ClientHandler):
+    def __handle_client(self, client: ClientHandlerSW):
         """Handle the client."""
         address = client.address
         print("Handling client, ", address)

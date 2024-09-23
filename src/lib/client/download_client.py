@@ -61,26 +61,27 @@ class DownloadClient:
             file_name_package.encode(), (self.__config.HOST, self.__config.PORT)
         )
         print(f"File name request sent: {self.__config.FILE_NAME}")
-        self.__wait_for_ack(file_name_package)
+        packet = self.__wait_for_ack(file_name_package)
         self.__swap_sequence_number()
         print("File name ack received")
+        return packet
 
-    def __recv_file_data(self):
-        ready_for_file_package = SWPacket(
-            self.__sequence_number,
-            1 if self.__sequence_number == 0 else 0,
-            False,
-            False,
-            True,
-            False,
-            True,
-            b"",
-        )
-        self.__skt.sendto(
-            ready_for_file_package.encode(), (self.__config.HOST, self.__config.PORT)
-        )
-        print("Ready for file packet sent")
-        packet = self.__wait_for_ack(ready_for_file_package)
+    def __recv_file_data(self, packet):
+        # ready_for_file_package = SWPacket(
+        #     self.__sequence_number,
+        #     1 if self.__sequence_number == 0 else 0,
+        #     False,
+        #     False,
+        #     True,
+        #     False,
+        #     True,
+        #     b"",
+        # )
+        # self.__skt.sendto(
+        #     ready_for_file_package.encode(), (self.__config.HOST, self.__config.PORT)
+        # )
+        # print("Ready for file packet sent")
+        # packet = self.__wait_for_ack(ready_for_file_package)
         print("Receiving file data")
         print(f"Received packet of size {len(packet.payload)}")
         file_buff = []
@@ -112,7 +113,7 @@ class DownloadClient:
     def run(self):
         print("Starting file download")
         self.__send_comm_start()
-        self.__send_file_name_request()
-        self.__recv_file_data()
+        packet = self.__send_file_name_request()
+        self.__recv_file_data(packet)
         print(f"File received: {self.__config.FILE_NAME}")
         self.__skt.close()
