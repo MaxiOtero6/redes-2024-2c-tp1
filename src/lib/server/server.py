@@ -23,7 +23,7 @@ class Server:
             data, address = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
             packet = SWPacket.decode(data)
 
-            if address not in self.clients_handlers:
+            if address not in self.__clients_handlers:
                 client = ClientHandler(
                     address, self.__skt, self.__config.STORAGE_DIR_PATH
                 )
@@ -34,7 +34,7 @@ class Server:
 
     def __handle_client(self, client: ClientHandler):
         """Handle the client."""
-        print("Handling client")
+        print("Handling client, ", client.address)
 
         while client.is_active:
             try:
@@ -51,7 +51,7 @@ class Server:
             except queue.Empty:
                 continue
 
-        print("Client disconnected")
+        print("Client disconnected, ", client.address)
         del self.__clients_handlers[client.address]
 
     def run(self):
