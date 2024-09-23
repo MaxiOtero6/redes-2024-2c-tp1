@@ -3,7 +3,7 @@ from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
 from lib.packets.sw_packet import SWPacket
 
 
-class Client:
+class ClientHandler:
     def __init__(self, address, socket, folder_path):
         self.address = address
         self.socket = socket
