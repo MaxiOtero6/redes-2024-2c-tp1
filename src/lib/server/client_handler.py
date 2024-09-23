@@ -69,7 +69,7 @@ class ClientHandler:
             print(f"Receiving file: {file_name}")
 
             file_path = f"{self.folder_path}/{file_name}"
-            with open(file_path, "wb") as file:
+            with open(file_path, "wb") as _:
                 pass
 
         elif packet.dwl:
