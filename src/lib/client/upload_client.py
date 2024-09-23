@@ -1,3 +1,4 @@
+import time
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
@@ -84,6 +85,10 @@ class UploadClient:
                 )
                 self.__wait_for_ack(packet)
                 print(f"Sent packet of size {len(data)}")
+
+                # sleep for a second
+                time.sleep(0.1)
+
                 self.__swap_sequence_number()
                 data = file.read(MAX_PAYLOAD_SIZE)
 
