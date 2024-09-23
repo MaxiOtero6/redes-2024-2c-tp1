@@ -1,5 +1,5 @@
 from lib.arguments.args_parser import ArgsParser
-from lib.config import UploadConfig
+from lib.client.upload_config import UploadConfig
 from sys import argv
 from lib.client.upload_client import UploadClient
 

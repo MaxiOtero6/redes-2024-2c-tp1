@@ -1,5 +1,5 @@
 from lib.packets.sw_packet import SWPacket
-from lib.config import DownloadConfig
+from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
 

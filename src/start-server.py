@@ -1,5 +1,5 @@
 from lib.arguments.args_parser import ArgsParser
-from lib.config import ServerConfig
+from lib.server.server_config import ServerConfig
 from sys import argv
 from lib.server.server import Server
 

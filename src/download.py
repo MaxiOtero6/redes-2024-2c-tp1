@@ -1,7 +1,7 @@
 from lib.arguments.args_parser import ArgsParser
-from lib.config import DownloadConfig
-from sys import argv
+from lib.client.download_config import DownloadConfig
 from lib.client.download_client import DownloadClient
+from sys import argv
 
 
 def main():

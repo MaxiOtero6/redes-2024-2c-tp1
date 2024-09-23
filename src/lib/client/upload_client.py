@@ -1,5 +1,5 @@
 from lib.packets.sw_packet import SWPacket
-from lib.config import UploadConfig
+from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
 import socket
 
@@ -50,7 +50,7 @@ class UploadClient:
         file_name_package = SWPacket(
             self.__sequence_number,
             1 if self.__sequence_number == 0 else 0,
-            True,
+            False,
             False,
             False,
             True,
