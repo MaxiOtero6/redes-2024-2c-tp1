@@ -83,8 +83,9 @@ class UploadClient:
                 self.__skt.sendto(
                     packet.encode(), (self.__config.HOST, self.__config.PORT)
                 )
-                self.__wait_for_ack(packet)
                 print(f"Sent packet of size {len(data)}")
+                self.__wait_for_ack(packet)
+                print("Ack received for packet")
 
                 # sleep for a second
                 time.sleep(0.1)

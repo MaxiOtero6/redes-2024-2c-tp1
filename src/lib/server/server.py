@@ -1,7 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 import os
-import queue
-from lib.packets.sw_packet import SWPacket
 from lib.server.server_config import ServerConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
@@ -21,7 +19,6 @@ class Server:
         """Listen for packets and route them to the correct client handler."""
         while True:
             data, address = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
-            packet = SWPacket.decode(data)
 
             if address not in self.__clients_handlers:
                 client = ClientHandler(
@@ -30,29 +27,17 @@ class Server:
                 self.__clients_handlers[address] = client
                 self.__pool.submit(self.__handle_client, client)
 
-            self.__clients_handlers[address].packet_queue.put(packet)
+            self.__clients_handlers[address].data_queue.put(data)
 
     def __handle_client(self, client: ClientHandler):
         """Handle the client."""
-        print("Handling client, ", client.address)
+        address = client.address
+        print("Handling client, ", address)
 
-        while client.is_active:
-            try:
-                packet = client.packet_queue.get(timeout=1)
+        client.handle_request()
 
-                if packet.syn:
-                    client.handle_syn(packet)
-                elif packet.fin:
-                    client.handle_fin(packet)
-                elif packet.upl:
-                    client.handle_upl(packet)
-                elif packet.dwl:
-                    client.handle_dwl(packet)
-            except queue.Empty:
-                continue
-
-        print("Client disconnected, ", client.address)
-        del self.__clients_handlers[client.address]
+        print("Client disconnected, ", address)
+        del self.__clients_handlers[address]
 
     def run(self):
         """Main server function."""
