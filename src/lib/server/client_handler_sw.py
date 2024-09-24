@@ -10,30 +10,30 @@ class ClientHandlerSW:
         self.__is_active = True
         self.__socket = socket
         self.__folder_path = folder_path
-        self.__last_client_packet = None
-        self.__last_server_packet = None
+        self.__last_packet_received = None
+        self.__last_packet_sent = None
 
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.data_queue.get()
         packet = SWPacket.decode(data)
-        self.__last_client_packet = packet
+        self.__last_packet_received = packet
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
-        self.__last_server_packet = packet
+        self.__last_packet_sent = packet
 
     def __send_ack(self):
         """Send an acknowledgment to the client."""
         ack_packet = SWPacket(
-            self.__last_client_packet.ack_number,
-            self.__last_client_packet.seq_number,
-            self.__last_client_packet.syn,
-            self.__last_client_packet.fin,
+            self.__last_packet_received.ack_number,
+            self.__last_packet_received.seq_number,
+            self.__last_packet_received.syn,
+            self.__last_packet_received.fin,
             True,
-            self.__last_client_packet.upl,
-            self.__last_client_packet.dwl,
+            self.__last_packet_received.upl,
+            self.__last_packet_received.dwl,
             b"",
         )
         self.__send_packet(ack_packet)
@@ -42,17 +42,17 @@ class ClientHandlerSW:
         """Wait for an appropriate acknowledgment from the client."""
         self.__get_packet()
 
-        while not self.__last_client_packet.ack or (
-            self.__last_server_packet.seq_number != self.__last_client_packet.ack_number
+        while not self.__last_packet_received.ack or (
+            self.__last_packet_sent.seq_number != self.__last_packet_received.ack_number
         ):
-            self.__send_packet(self.__last_server_packet)
+            self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
     def __send_fin(self):
         """Send the final FIN packet."""
         fin_packet = SWPacket(
-            self.__last_client_packet.ack_number,
-            self.__last_client_packet.seq_number,
+            self.__last_packet_received.ack_number,
+            self.__last_packet_received.seq_number,
             False,
             True,
             False,
@@ -66,7 +66,7 @@ class ClientHandlerSW:
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
         with open(file_path, "ab") as file:
-            file.write(self.__last_client_packet.payload)
+            file.write(self.__last_packet_received.payload)
 
     def __send_file_data(self, file_path):
         """Send file data to the client."""
@@ -77,8 +77,8 @@ class ClientHandlerSW:
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) > 0:
                 data_packet = SWPacket(
-                    self.__last_client_packet.ack_number,
-                    self.__last_client_packet.seq_number,
+                    self.__last_packet_received.ack_number,
+                    self.__last_packet_received.seq_number,
                     False,
                     False,
                     False,
@@ -107,13 +107,13 @@ class ClientHandlerSW:
         while self.__is_active:
             self.__get_packet()
 
-            if self.__last_client_packet.fin:
+            if self.__last_packet_received.fin:
                 self.__handle_fin()
                 continue
 
             if (
-                self.__last_client_packet.seq_number
-                != self.__last_server_packet.ack_number
+                self.__last_packet_received.seq_number
+                != self.__last_packet_sent.ack_number
             ):
                 self.__save_file_data(file_path)
             self.__send_ack()
@@ -133,7 +133,7 @@ class ClientHandlerSW:
 
     def __handle_file_name(self):
         """Receive and handle the file name."""
-        file_name = self.__last_client_packet.payload.decode()
+        file_name = self.__last_packet_received.payload.decode()
         return file_name
 
     def handle_request(self):
@@ -143,7 +143,7 @@ class ClientHandlerSW:
 
         # Handle the initial SYN packet
 
-        if self.__last_client_packet.syn:
+        if self.__last_packet_received.syn:
             self.__handle_syn()
         else:
             raise Exception("Invalid request")
@@ -153,15 +153,15 @@ class ClientHandlerSW:
         self.__get_packet()
         file_name: str = ""
 
-        if self.__last_client_packet.upl or self.__last_client_packet.dwl:
+        if self.__last_packet_received.upl or self.__last_packet_received.dwl:
             file_name = self.__handle_file_name()
         else:
             raise Exception("Invalid request")
 
         # Handle the file data
-        if self.__last_client_packet.upl:
+        if self.__last_packet_received.upl:
             self.__send_ack()
             self.__handle_upl(file_name)
-        elif self.__last_client_packet.dwl:
+        elif self.__last_packet_received.dwl:
             # Automatically start the download process
             self.__handle_dwl(file_name)
