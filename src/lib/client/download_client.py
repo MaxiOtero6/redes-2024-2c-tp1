@@ -45,7 +45,6 @@ class DownloadClient:
         ):
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
-        print("Ack received")
 
     def __wait_for_data(self):
         self.__get_packet()
@@ -71,7 +70,6 @@ class DownloadClient:
         print("Download start packet sent")
 
         self.__wait_for_ack()
-
         print("Start ack received")
 
     def __send_file_name_request(self):
@@ -101,7 +99,7 @@ class DownloadClient:
         with open(file_path, "ab") as file:
             file.write(self.__last_packet_received.payload)
 
-    def __recv_file_data(self):
+    def __recieve_file_data(self):
         print("Receiving file data")
         file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
@@ -123,6 +121,6 @@ class DownloadClient:
         print("Starting file download")
         self.__send_comm_start()
         self.__send_file_name_request()
-        self.__recv_file_data()
+        self.__recieve_file_data()
         print(f"File received: {self.__config.FILE_NAME}")
         self.__skt.close()

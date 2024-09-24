@@ -1,4 +1,5 @@
 import queue
+import time
 from lib.arguments.constants import MAX_PAYLOAD_SIZE
 from lib.packets.sw_packet import SWPacket
 
@@ -89,6 +90,10 @@ class ClientHandlerSW:
                 )
                 self.__send_packet(data_packet)
                 self.__wait_for_ack()
+
+                # sleep for a second
+                time.sleep(0.1)
+
                 data = file.read(MAX_PAYLOAD_SIZE)
                 first_packet = False
 
@@ -115,7 +120,7 @@ class ClientHandlerSW:
 
             if (
                 self.__last_packet_received.seq_number
-                != self.__last_packet_sent.ack_number
+                == self.__last_packet_sent.ack_number
             ):
                 self.__save_file_data(file_path)
             self.__send_ack()
