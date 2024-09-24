@@ -113,6 +113,8 @@ class UploadClient:
         )
         self.__skt.sendto(fin_packet.encode(), (self.__config.HOST, self.__config.PORT))
         print("Fin packet sent")
+        self.__wait_for_ack(fin_packet)
+        print("Fin ack received")
 
     def run(self):
         print("Starting file upload")
