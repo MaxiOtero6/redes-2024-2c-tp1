@@ -56,8 +56,8 @@ class ClientHandlerSW:
             False,
             True,
             False,
-            False,
-            False,
+            self.__last_packet_received.upl,
+            self.__last_packet_received.dwl,
             b"",
         )
         self.__send_packet(fin_packet)
@@ -75,13 +75,14 @@ class ClientHandlerSW:
         with open(file_path, "rb") as file:
             print("Sending file data")
             data = file.read(MAX_PAYLOAD_SIZE)
+            first_packet = True
             while len(data) > 0:
                 data_packet = SWPacket(
                     self.__last_packet_received.ack_number,
                     self.__last_packet_received.seq_number,
                     False,
                     False,
-                    False,
+                    first_packet,
                     False,
                     True,
                     data,
@@ -89,6 +90,7 @@ class ClientHandlerSW:
                 self.__send_packet(data_packet)
                 self.__wait_for_ack()
                 data = file.read(MAX_PAYLOAD_SIZE)
+                first_packet = False
 
     def __handle_syn(self):
         """Handle the initial SYN packet."""
