@@ -1,5 +1,5 @@
 import ipaddress
-from .errors.port_out_of_bounds import PortOutOfBounds
+from ..errors.port_out_of_bounds import PortOutOfBounds
 from os.path import isdir, isfile
 
 
@@ -14,13 +14,13 @@ class ArgsValidator:
 
         port = int(port)
 
-        if (port >= 0 and port <= 65535):
+        if port >= 0 and port <= 65535:
             return port
 
         raise PortOutOfBounds("Port must be between 0 and 65535")
 
     def validate_algorithm(self, algo: str) -> str:
-        if (algo != "sw" and algo != "sack"):
-            raise ValueError("Algorithm must be \'sw\' or \'sack\'")
+        if algo != "sw" and algo != "sack":
+            raise ValueError("Algorithm must be 'sw' or 'sack'")
 
         return algo

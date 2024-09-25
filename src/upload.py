@@ -1,14 +1,15 @@
-from lib.args_parser import ArgsParser
-from lib.config import UploadConfig
+from lib.arguments.args_parser import ArgsParser
+from lib.client.upload_config import UploadConfig
 from sys import argv
-from lib.upload_client  import UploadClient
+from lib.client.upload_client import UploadClient
 
 
 def main():
     parser = ArgsParser()
     config: UploadConfig = parser.load_args(argv)
-    client : UploadClient = UploadClient(config)
+    client: UploadClient = UploadClient(config)
     client.run()
+
 
 if __name__ == "__main__":
     main()

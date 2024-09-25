@@ -1,4 +1,4 @@
-from .verbose import Verbose
+from ..verbose import Verbose
 
 DOWNLOAD_CLIENT: str = "download.py"
 UPLOAD_CLIENT: str = "upload.py"
@@ -13,5 +13,7 @@ DEFAULT_SERVER_STORAGE_DIR_PATH: str = "~/server-storage"
 
 DEFAULT_DOWNLOAD_DESTINATION_PATH: str = "~/Downloads"
 
+HEADER_SIZE_SW = 8
 MAX_PAYLOAD_SIZE = 512
-MAX_PACKET_SIZE_SW = 520
+
+MAX_PACKET_SIZE_SW = HEADER_SIZE_SW + MAX_PAYLOAD_SIZE

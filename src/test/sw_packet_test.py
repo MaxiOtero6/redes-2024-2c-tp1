@@ -1,5 +1,5 @@
 import unittest
-from lib.sw_packet import SWPacket
+from lib.packets.sw_packet import SWPacket
 
 
 class SWPacketTest(unittest.TestCase):

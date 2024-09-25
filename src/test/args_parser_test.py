@@ -1,6 +1,8 @@
 import unittest
-from lib.args_parser import ArgsParser
-from lib.config import *
+from lib.arguments.args_parser import ArgsParser
+from lib.client.download_config import DownloadConfig
+from lib.client.upload_config import UploadConfig
+from lib.server.server_config import ServerConfig
 from lib.verbose import Verbose
 
 
@@ -8,9 +10,16 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_server_args(self):
         parser = ArgsParser()
         argv = [
-            "start-server.py", "-v", "-H",
-            "127.0.0.1", "-p", "8080", "-s", "~/Documents",
-            "-a", "sw"
+            "start-server.py",
+            "-v",
+            "-H",
+            "127.0.0.1",
+            "-p",
+            "8080",
+            "-s",
+            "~/Documents",
+            "-a",
+            "sw",
         ]
 
         config: ServerConfig = parser.load_args(argv)
@@ -24,10 +33,18 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_upload_client_args(self):
         parser = ArgsParser()
         argv = [
-            "upload.py", "-q", "-H",
-            "127.0.0.1", "-p", "8080", "-s",
-            "dev/null", "-n", "cat",
-            "-a", "sack"
+            "upload.py",
+            "-q",
+            "-H",
+            "127.0.0.1",
+            "-p",
+            "8080",
+            "-s",
+            "dev/null",
+            "-n",
+            "cat",
+            "-a",
+            "sack",
         ]
 
         config: UploadConfig = parser.load_args(argv)
@@ -42,9 +59,15 @@ class ArgsParserTest(unittest.TestCase):
     def test_load_download_client_args(self):
         parser = ArgsParser()
         argv = [
-            "download.py", "-H",
-            "127.0.0.1", "-p", "8080", "-d",
-            "dev/null", "-n", "dog"
+            "download.py",
+            "-H",
+            "127.0.0.1",
+            "-p",
+            "8080",
+            "-d",
+            "dev/null",
+            "-n",
+            "dog",
         ]
 
         config: DownloadConfig = parser.load_args(argv)
