@@ -38,6 +38,18 @@ class DownloadClient:
             == self.__last_packet_received.ack_number
         )
 
+    def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        return SWPacket(
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
+            syn,
+            fin,
+            ack,
+            upl,
+            dwl,
+            payload,
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.__skt.recv(MAX_PACKET_SIZE_SW)
@@ -51,9 +63,7 @@ class DownloadClient:
 
     def __send_ack(self):
         """Send an acknowledgment to the client."""
-        ack_packet = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        ack_packet = self.__create_new_packet(
             self.__last_packet_received.syn,
             self.__last_packet_received.fin,
             True,
@@ -78,9 +88,7 @@ class DownloadClient:
             self.__get_packet()
 
     def __send_comm_start(self):
-        start_package = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        start_package = self.__create_new_packet(
             True,
             False,
             False,
@@ -95,9 +103,7 @@ class DownloadClient:
         print("Start ack received")
 
     def __send_file_name_request(self):
-        file_name_package = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        file_name_package = self.__create_new_packet(
             True,
             False,
             False,

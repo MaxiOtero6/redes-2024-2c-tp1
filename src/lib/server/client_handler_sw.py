@@ -39,28 +39,32 @@ class ClientHandlerSW:
             == self.__last_packet_received.ack_number
         )
 
+    def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        return SWPacket(
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
+            syn,
+            fin,
+            ack,
+            upl,
+            dwl,
+            payload,
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.data_queue.get()
         packet = SWPacket.decode(data)
         self.__last_packet_received = packet
 
-        print("Recieved SEQ: ", packet.seq_number)
-        print("Recieved ACK: ", packet.ack_number)
-
     def __send_packet(self, packet):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
         self.__last_packet_sent = packet
 
-        print("Sent SEQ: ", packet.seq_number)
-        print("Sent ACK: ", packet.ack_number)
-
     def __send_ack(self):
         """Send an acknowledgment to the client."""
-        ack_packet = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        ack_packet = self.__create_new_packet(
             self.__last_packet_received.syn,
             self.__last_packet_received.fin,
             True,
@@ -89,9 +93,7 @@ class ClientHandlerSW:
 
     def __send_fin(self):
         """Send the final FIN packet."""
-        fin_packet = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        fin_packet = self.__create_new_packet(
             False,
             True,
             False,
@@ -109,15 +111,11 @@ class ClientHandlerSW:
 
     def __send_file_data(self, file_path):
         """Send file data to the client."""
-        print(f"Sending file data {file_path}")
-
         with open(file_path, "rb") as file:
             data = file.read(MAX_PAYLOAD_SIZE)
             first_packet = True
             while len(data) > 0:
-                data_packet = SWPacket(
-                    self.__next_seq_number(),
-                    self.__last_recived_seq_number(),
+                data_packet = self.__create_new_packet(
                     False,
                     False,
                     first_packet,
@@ -150,9 +148,7 @@ class ClientHandlerSW:
 
     def __handle_syn(self):
         """Handle the initial SYN packet."""
-        syn_ack_packet = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        syn_ack_packet = self.__create_new_packet(
             True,
             False,
             True,
@@ -162,7 +158,6 @@ class ClientHandlerSW:
         )
 
         self.__send_packet(syn_ack_packet)
-        print("SYN ACK sent")
 
     def __handle_upl(self, file_name):
         """Handle an upload packet."""

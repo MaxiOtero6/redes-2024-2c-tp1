@@ -34,6 +34,18 @@ class UploadClient:
             == self.__last_packet_received.ack_number
         )
 
+    def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        return SWPacket(
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
+            syn,
+            fin,
+            ack,
+            upl,
+            dwl,
+            payload,
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.__skt.recv(MAX_PACKET_SIZE_SW)
@@ -53,9 +65,7 @@ class UploadClient:
             self.__get_packet()
 
     def __send_comm_start(self):
-        start_package = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        start_package = self.__create_new_packet(
             True,
             False,
             False,
@@ -70,9 +80,7 @@ class UploadClient:
         print("Start ack received")
 
     def __send_file_name(self):
-        file_name_package = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        file_name_package = self.__create_new_packet(
             True,
             False,
             False,
@@ -93,9 +101,7 @@ class UploadClient:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:
-                packet = SWPacket(
-                    self.__next_seq_number(),
-                    self.__last_recived_seq_number(),
+                packet = self.__create_new_packet(
                     False,
                     False,
                     False,
@@ -117,9 +123,7 @@ class UploadClient:
                 data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
-        fin_packet = SWPacket(
-            self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+        fin_packet = self.__create_new_packet(
             False,
             True,
             False,
