@@ -8,7 +8,6 @@ class ClientHandlerSW:
     def __init__(self, address, socket, folder_path):
         self.data_queue = queue.Queue()
         self.address = address
-        self.__is_active = True
         self.__socket = socket
         self.__folder_path = folder_path
         self.__last_packet_received = None
@@ -29,7 +28,15 @@ class ClientHandlerSW:
     def __last_packet_is_new(self):
         """Check if the last packet received is new."""
         return (
-            self.__last_packet_received.seq_number != self.__last_packet_sent.seq_number
+            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
+        )
+
+    def __last_packet_sent_was_ack(self):
+        """Check if the last packet sent was an acknowledgment."""
+        return (
+            self.__last_packet_received.ack
+            and self.__last_packet_sent.seq_number
+            == self.__last_packet_received.ack_number
         )
 
     def __get_packet(self):
@@ -67,17 +74,24 @@ class ClientHandlerSW:
         """Wait for an appropriate acknowledgment from the client."""
         self.__get_packet()
 
-        while not self.__last_packet_received.ack or (
-            self.__last_packet_sent.seq_number != self.__last_packet_received.ack_number
-        ):
+        while not self.__last_packet_sent_was_ack():
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
+
+    def __wait_for_data(self):
+        """Wait for data from the client."""
+        self.__get_packet()
+
+        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
+            print("Waiting for data")
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
     def __send_fin(self):
         """Send the final FIN packet."""
         fin_packet = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             False,
             True,
             False,
@@ -98,13 +112,12 @@ class ClientHandlerSW:
         print(f"Sending file data {file_path}")
 
         with open(file_path, "rb") as file:
-            print("Sending file data")
             data = file.read(MAX_PAYLOAD_SIZE)
             first_packet = True
             while len(data) > 0:
                 data_packet = SWPacket(
-                    self.__last_packet_received.ack_number,
-                    self.__last_packet_received.seq_number,
+                    self.__next_seq_number(),
+                    self.__last_recived_seq_number(),
                     False,
                     False,
                     first_packet,
@@ -120,6 +133,20 @@ class ClientHandlerSW:
 
                 data = file.read(MAX_PAYLOAD_SIZE)
                 first_packet = False
+
+    def __recieve_file_data(self, file_path):
+        # To create / overwrite the file
+        with open(file_path, "wb") as _:
+            pass
+
+        self.__wait_for_data()
+
+        while not self.__last_packet_received.fin:
+            self.__save_file_data(file_path)
+            self.__send_ack()
+            self.__wait_for_data()
+
+        self.__handle_fin()
 
     def __handle_syn(self):
         """Handle the initial SYN packet."""
@@ -143,20 +170,7 @@ class ClientHandlerSW:
         file_path = f"{self.__folder_path}/{file_name}"
         print(f"Receiving file: {file_name}")
 
-        # To create / overwrite the file
-        with open(file_path, "wb") as _:
-            pass
-
-        while self.__is_active:
-            self.__get_packet()
-
-            if self.__last_packet_received.fin:
-                self.__handle_fin()
-                continue
-
-            if self.__last_packet_received.upl and self.__last_packet_is_new():
-                self.__save_file_data(file_path)
-            self.__send_ack()
+        self.__recieve_file_data(file_path)
 
     def __handle_dwl(self, file_name):
         """Handle a download packet."""
@@ -168,7 +182,6 @@ class ClientHandlerSW:
 
     def __handle_fin(self):
         """Handle the final FIN packet."""
-        self.__is_active = False
         self.__send_ack()
 
     def __handle_file_name(self):

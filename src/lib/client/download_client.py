@@ -12,6 +12,32 @@ class DownloadClient:
         self.__last_packet_sent = None
         self.__last_packet_received = None
 
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        if self.__last_packet_sent is None:
+            return 0
+        return 1 - self.__last_packet_sent.seq_number
+
+    def __last_recived_seq_number(self):
+        """Get the last received sequence number."""
+        if self.__last_packet_received is None:
+            return 0
+        return self.__last_packet_received.seq_number
+
+    def __last_packet_is_new(self):
+        """Check if the last packet received is new."""
+        return (
+            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
+        )
+
+    def __last_packet_sent_was_ack(self):
+        """Check if the last packet sent was an acknowledgment."""
+        return (
+            self.__last_packet_received.ack
+            and self.__last_packet_sent.seq_number
+            == self.__last_packet_received.ack_number
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.__skt.recv(MAX_PACKET_SIZE_SW)
@@ -26,8 +52,8 @@ class DownloadClient:
     def __send_ack(self):
         """Send an acknowledgment to the client."""
         ack_packet = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             self.__last_packet_received.syn,
             self.__last_packet_received.fin,
             True,
@@ -40,25 +66,21 @@ class DownloadClient:
     def __wait_for_ack(self):
         self.__get_packet()
 
-        while not self.__last_packet_received.ack or (
-            self.__last_packet_sent.seq_number != self.__last_packet_received.ack_number
-        ):
+        while not self.__last_packet_sent_was_ack():
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
     def __wait_for_data(self):
         self.__get_packet()
 
-        while not self.__last_packet_received.dwl or (
-            self.__last_packet_sent.seq_number != self.__last_packet_received.ack_number
-        ):
+        while not (self.__last_packet_received.dwl and self.__last_packet_is_new()):
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
     def __send_comm_start(self):
         start_package = SWPacket(
-            0,
-            1,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             True,
             False,
             False,
@@ -74,8 +96,8 @@ class DownloadClient:
 
     def __send_file_name_request(self):
         file_name_package = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             True,
             False,
             False,
@@ -106,11 +128,7 @@ class DownloadClient:
         while not self.__last_packet_received.fin:
             print(f"Received packet of size {len(self.__last_packet_received.payload)}")
 
-            if self.__last_packet_received.dwl and (
-                self.__last_packet_received.seq_number
-                == self.__last_packet_sent.ack_number
-            ):
-                self.__save_file_data(file_path)
+            self.__save_file_data(file_path)
 
             self.__send_ack()
             self.__wait_for_data()
