@@ -118,8 +118,8 @@ class UploadClient:
 
     def __send_comm_fin(self):
         fin_packet = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             False,
             True,
             False,
