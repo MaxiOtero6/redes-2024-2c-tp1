@@ -14,6 +14,26 @@ class UploadClient:
         self.__last_packet_sent = None
         self.__last_packet_received = None
 
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        if self.__last_packet_sent is None:
+            return 0
+        return 1 - self.__last_packet_sent.seq_number
+
+    def __last_recived_seq_number(self):
+        """Get the last received sequence number."""
+        if self.__last_packet_received is None:
+            return 0
+        return self.__last_packet_received.seq_number
+
+    def __last_packet_sent_was_ack(self):
+        """Check if the last packet sent was an acknowledgment."""
+        return (
+            self.__last_packet_received.ack
+            and self.__last_packet_sent.seq_number
+            == self.__last_packet_received.ack_number
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.__skt.recv(MAX_PACKET_SIZE_SW)
@@ -28,16 +48,14 @@ class UploadClient:
     def __wait_for_ack(self):
         self.__get_packet()
 
-        while not self.__last_packet_received.ack or (
-            self.__last_packet_sent.seq_number != self.__last_packet_received.ack_number
-        ):
+        while not self.__last_packet_sent_was_ack():
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
     def __send_comm_start(self):
         start_package = SWPacket(
-            0,
-            1,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             True,
             False,
             False,
@@ -53,8 +71,8 @@ class UploadClient:
 
     def __send_file_name(self):
         file_name_package = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             True,
             False,
             False,
@@ -76,8 +94,8 @@ class UploadClient:
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:
                 packet = SWPacket(
-                    self.__last_packet_received.ack_number,
-                    self.__last_packet_received.seq_number,
+                    self.__next_seq_number(),
+                    self.__last_recived_seq_number(),
                     False,
                     False,
                     False,

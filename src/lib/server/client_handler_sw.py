@@ -14,22 +14,46 @@ class ClientHandlerSW:
         self.__last_packet_received = None
         self.__last_packet_sent = None
 
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        if self.__last_packet_sent is None:
+            return 0
+        return 1 - self.__last_packet_sent.seq_number
+
+    def __last_recived_seq_number(self):
+        """Get the last received sequence number."""
+        if self.__last_packet_received is None:
+            return 0
+        return self.__last_packet_received.seq_number
+
+    def __last_packet_is_new(self):
+        """Check if the last packet received is new."""
+        return (
+            self.__last_packet_received.seq_number != self.__last_packet_sent.seq_number
+        )
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.data_queue.get()
         packet = SWPacket.decode(data)
         self.__last_packet_received = packet
 
+        print("Recieved SEQ: ", packet.seq_number)
+        print("Recieved ACK: ", packet.ack_number)
+
     def __send_packet(self, packet):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
         self.__last_packet_sent = packet
 
+        print("Sent SEQ: ", packet.seq_number)
+        print("Sent ACK: ", packet.ack_number)
+
     def __send_ack(self):
         """Send an acknowledgment to the client."""
         ack_packet = SWPacket(
-            self.__last_packet_received.ack_number,
-            self.__last_packet_received.seq_number,
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
             self.__last_packet_received.syn,
             self.__last_packet_received.fin,
             True,
@@ -99,7 +123,19 @@ class ClientHandlerSW:
 
     def __handle_syn(self):
         """Handle the initial SYN packet."""
-        self.__send_ack()
+        syn_ack_packet = SWPacket(
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
+            True,
+            False,
+            True,
+            self.__last_packet_received.upl,
+            self.__last_packet_received.dwl,
+            b"",
+        )
+
+        self.__send_packet(syn_ack_packet)
+        print("SYN ACK sent")
 
     def __handle_upl(self, file_name):
         """Handle an upload packet."""
@@ -118,10 +154,7 @@ class ClientHandlerSW:
                 self.__handle_fin()
                 continue
 
-            if (
-                self.__last_packet_received.seq_number
-                == self.__last_packet_sent.ack_number
-            ):
+            if self.__last_packet_received.upl and self.__last_packet_is_new():
                 self.__save_file_data(file_path)
             self.__send_ack()
 
