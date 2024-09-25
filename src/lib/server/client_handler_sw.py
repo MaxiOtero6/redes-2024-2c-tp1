@@ -198,7 +198,7 @@ class ClientHandlerSW:
 
         # Get the file name
 
-        self._wait_for_data()
+        self.__get_packet()
         file_name: str = ""
 
         if self.__last_packet_received.upl or self.__last_packet_received.dwl:
