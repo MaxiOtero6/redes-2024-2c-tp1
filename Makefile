@@ -1,8 +1,8 @@
 # Variables
 PYTHON=python3
-SERVER_SCRIPT=start_server.py
-UPLOAD_SCRIPT=upload.py
-DOWNLOAD_SCRIPT=download.py
+SERVER_SCRIPT=src/start-server.py
+UPLOAD_SCRIPT=src/upload.py
+DOWNLOAD_SCRIPT=src/download.py
 STORAGE_DIR=./storage
 MININET_TOPOLOGY=single,2
 MININET_OPTIONS=--mac --switch ovsk --controller remote
@@ -23,7 +23,9 @@ clean:
 
 # Run the server in Mininet
 run_server:
-	$(MN) -- bash -c "$(PYTHON) $(SERVER_SCRIPT) -H 10.0.0.1 -p 5001 -s $(STORAGE_DIR)"
+	# Start Mininet and run the server script in the background
+	$(MN) & sleep 2; \
+	$(PYTHON) $(SERVER_SCRIPT) -H 10.0.0.1 -p 5001 -s $(STORAGE_DIR)
 
 # Upload a file to the server in Mininet
 upload:
