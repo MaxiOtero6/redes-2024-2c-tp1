@@ -12,12 +12,20 @@ class ClientHandlerSACK:
         self.__folder_path = folder_path
         self.__last_packet_received = None
         self.__last_packet_sent = None
-        
+
+        # Sender
+        self.window_size = 4
+        self.data_packets = {} # {seq_number: packet}
+        self.__last_packet_sent = None
+        self.__final_data_seq = 0
+
+        # Receiver
         self.__received_blocks_edges = [] # list[tuple[int, int]] Si recibí los bloques 2,3 y 5,6,7, tendría [(2,3), (5,7)]
         self.out_of_order_buffer = {} # {seq_number: packet}
         self.unacknowledged_packets = {} # {seq_number: packet}
         self.next_expected_seq_number = 0
-        self.rwnd = 4096
+        self.__last_packet_received = None
+        
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -31,11 +39,6 @@ class ClientHandlerSACK:
             return 0
         return self.__last_packet_received.ack_number
 
-    def __last_packet_is_new(self):
-        """Check if the last packet received is new."""
-        return (
-            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
-        )
 
     def __last_packet_sent_was_ack(self):
         """Check if the last packet sent was an acknowledgment."""
@@ -71,28 +74,6 @@ class ClientHandlerSACK:
         self.__last_packet_sent = packet
 
 
-    def __send_sack_ack(self):
-        """Send a SACK acknowledgment to the client."""
-        ack_packet = self.__create_ack_packet()
-        self.__send_packet(ack_packet)
-
-    def __wait_for_ack(self):
-        """Wait for an appropriate acknowledgment from the client."""
-        self.__get_packet()
-
-        while not self.__last_packet_sent_was_ack():
-            self.__send_packet(self.__last_packet_sent)
-            self.__get_packet()
-
-    def __wait_for_data(self):
-        """Wait for data from the client."""
-        self.__get_packet()
-
-        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
-            print("Waiting for data")
-            self.__send_packet(self.__last_packet_sent)
-            self.__get_packet()
-
     def __send_fin(self):
         """Send the final FIN packet."""
         fin_packet = self.__create_new_packet(
@@ -114,6 +95,14 @@ class ClientHandlerSACK:
 
     def __send_file_data(self, file_path):
         """Send file data to the client."""
+        self.__construct_packets(file_path)
+
+        for seq_number in self.data_packets:
+            packet = self.data_packets[seq_number]
+            self.__send_packet_with_retransmission(packet)
+
+    def __construct_packets(self, file_path):
+        """Construct the packets to be sent."""
         with open(file_path, "rb") as file:
             data = file.read(MAX_PAYLOAD_SIZE)
             first_packet = True
@@ -125,13 +114,9 @@ class ClientHandlerSACK:
                     False,
                     True,
                     data,
-                    []  # No block edges initially
+                    []  # No block edges from the sender side
                 )
-                self.__send_packet(data_packet)
-                self.__wait_for_ack()
-
-                # sleep for a second
-                time.sleep(0.1)
+                self.data_packets[data_packet.seq_number] = data_packet
 
                 data = file.read(MAX_PAYLOAD_SIZE)
                 first_packet = False
@@ -302,4 +287,47 @@ class ClientHandlerSACK:
             self.__handle_out_of_order_packet(packet)
 
         self.__send_sack_ack()
+
+    def __wait_for_data(self):
+        """Wait for data from the client."""
+        self.__get_packet()
+
+        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
+            print("Waiting for data")
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
+
+    def __wait_for_ack(self):
+    """Wait for an appropriate acknowledgment from the client."""
+    self.__get_packet()
+
+    while not self.__last_packet_sent_was_ack():
+        self.__send_packet(self.__last_packet_sent)
+        self.__get_packet()
+
+    
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        if self.__last_packet_sent is None:
+            return 0
+        return 1 - self.__last_packet_sent.seq_number
+
+    def __last_received_ack_number(self):
+        """Get the last received acknowledgment number."""
+        if self.__last_packet_received is None:
+            return 0
+        return self.__last_packet_received.ack_number
+
+    def __last_packet_is_new(self):
+    """Check if the last packet received is new."""
+    return (
+        self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
+    )
+    
+    def __send_sack_ack(self):
+        """Send a SACK acknowledgment to the client."""
+        ack_packet = self.__create_ack_packet()
+        self.__send_packet(ack_packet)
+
+
 '''
