@@ -280,14 +280,14 @@ optional arguments:
 
         binary = self.__get_binary(argv[0])
     
-    if binary == constants.DOWNLOAD_CLIENT:
-        return self.__load_download_client_args(argv)
+        if binary == constants.DOWNLOAD_CLIENT:
+            return self.__load_download_client_args(argv)
 
-    elif binary == constants.UPLOAD_CLIENT:
-        return self.__load_upload_client_args(argv)
+        elif binary == constants.UPLOAD_CLIENT:
+            return self.__load_upload_client_args(argv)
 
-    elif binary == constants.SERVER:
-        return self.__load_server_args(argv)
+        elif binary == constants.SERVER:
+            return self.__load_server_args(argv)
 
-    else:
-        raise UnknownBinary("Unknown executed binary")
+        else:
+            raise UnknownBinary("Unknown executed binary")
