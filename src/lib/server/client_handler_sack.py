@@ -274,76 +274,70 @@ class ClientHandlerSACK:
         
 
     def __receive_file_data(self, file_path):
-        # To create / overwrite the file
-        with open(file_path, "wb") as _:
-            pass
-
-        self.__wait_for_data()
-
-        while not self.__last_packet_received.fin:
-            self.__save_file_data(file_path)
-            self.__send_ack()
-            self.__wait_for_data()
-
-        self.__handle_fin()
-
-
-    def __wait_for_ack(self):
-        """Wait for an appropriate acknowledgment from the client."""
-        self.__get_packet()
-
-
-
-
-'''    
-    def __handle_packet(self, packet):
-        """Handle an incoming packet and determine if it is in order or out-of-order."""
-        seq_number = packet.seq_number
-
-        if seq_number == self.next_expected_seq_number:
-            # Packet is in order, process it
-            self.__last_packet_received = packet
-            self.__move_next_expected_seq_number()  # Move the next expected seq number forward
-        else:
-            # Packet is out of order, handle it and send a SACK ACK
-            self.__handle_out_of_order_packet(packet)
-
-        self.__send_sack_ack()
-
-    def __wait_for_data(self):
-        """Wait for data from the client."""
-        self.__get_packet()
-
-        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
-            print("Waiting for data")
-            self.__send_packet(self.__last_packet_sent)
-            self.__get_packet()
-
-    def __wait_for_ack(self):
-    """Wait for an appropriate acknowledgment from the client."""
-    self.__get_packet()
-
-    while not self.__last_packet_sent_was_ack():
-        self.__send_packet(self.__last_packet_sent)
-        self.__get_packet()
-
-    
-    def __next_seq_number(self):
-        """Get the next sequence number."""
-        if self.__last_packet_sent is None:
-            return 0
-        return 1 - self.__last_packet_sent.seq_number
-
-    def __last_received_ack_number(self):
-        """Get the last received acknowledgment number."""
-        if self.__last_packet_received is None:
-            return 0
-        return self.__last_packet_received.ack_number
-
-    def __last_packet_is_new(self):
-    """Check if the last packet received is new."""
-    return (
-        self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
-    )
+        """Receive file data in chunks and save it to the specified file path."""
         
-'''
+        while True: # SACAR ESTE While true
+            self.__get_packet()  
+
+            # Check if the packet is a valid data packet
+            if self.__last_packet_received.seq_number >= self.__expected_seq_number:
+                # Process the packet based on its sequence number
+                if self.__last_packet_received.seq_number == self.__expected_seq_number:
+                    # Correct sequence number, save the data
+                    self.__save_file_data(file_path)
+                    
+                    # Acknowledge the received packet
+                    self.__last_ack_number = self.__last_packet_received.seq_number
+                    self.__send_sack_ack()
+
+                    # Move to the next expected sequence number
+                    self.__expected_seq_number += self.__maximum_segment_size
+
+                    # Check if there are any out-of-order packets in the buffer
+                    self.__check_out_of_order_packets()
+                    
+                else:
+                    # Out-of-order packet; store it in the buffer
+                    self.out_of_order_buffer[self.__last_packet_received.seq_number] = self.__last_packet_received
+
+            else:
+                # Packet is old and can be ignored
+                print(f"Ignoring old packet with seq number: {self.__last_packet_received.seq_number}")
+
+            # Check if the end of file has been reached
+            if self.__last_packet_received.fin:
+                print("End of file reached.")
+                break
+
+    def __check_out_of_order_packets(self):
+        """Check and process any out-of-order packets that can now be received."""
+        # Iterate through the out-of-order buffer and process packets that are now in order
+        for seq_num in sorted(self.out_of_order_buffer.keys()):
+            if seq_num == self.__expected_seq_number:
+                # Process the packet
+                packet = self.out_of_order_buffer.pop(seq_num)
+                self.__save_file_data(packet.payload)
+                
+                # Acknowledge the packet
+                self.__last_ack_number = seq_num
+                self.__send_sack_ack()
+
+                # Update the expected sequence number
+                self.__expected_seq_number += self.__maximum_segment_size
+                
+                # Recursively check for more out-of-order packets
+                self.__check_out_of_order_packets()
+
+
+    def __send_sack_ack(self):
+        """Send a SACK acknowledgment to the client."""
+        sack_packet = self.__create_new_packet(
+            False,
+            False,
+            True,
+            self.__last_packet_received.upl,
+            self.__last_packet_received.dwl,
+            b"",
+            self.__received_blocks_edges
+        )
+        self.__send_packet(sack_packet)
