@@ -10,8 +10,6 @@ class ClientHandlerSACK:
         self.address = address
         self.__socket = socket
         self.__folder_path = folder_path
-        self.__last_packet_received = None
-        self.__last_packet_sent = None
 
         # Sender
         self.__window_size = 4096
@@ -53,7 +51,6 @@ class ClientHandlerSACK:
     def __send_packet(self, packet):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
-        self.__last_packet_sent = packet
 
     def __send_fin(self):
         """Send the final FIN packet."""
@@ -136,8 +133,10 @@ class ClientHandlerSACK:
             for seq_num in range(left_edge, right_edge, self.__maximum_segment_size):
                 self.__acknowledged_seq_numbers.add(seq_num)
 
+        self.__update_sent_unacknowledged_base()
+    
         # Retransmit any unacknowledged packets in the current window
-        for seq_num in range(self.__sent_unacknowledged_base, self.__last_packet_sent.seq_number + self.__maximum_segment_size, self.__maximum_segment_size):
+        for seq_num in range(self.__sent_unacknowledged_base, self.__sent_unacknowledged_base + self.__window_size, self.__maximum_segment_size):
             if seq_num not in self.__acknowledged_seq_numbers:
                 # If the sequence number has not been acknowledged, retransmit the packet
                 payload = self.__all_data_payloads[seq_num]
@@ -151,6 +150,17 @@ class ClientHandlerSACK:
                     payload=payload,
                 )
                 self.__send_packet(packet)
+
+    def __update_sent_unacknowledged_base(self):
+        """Update the sent unacknowledged base based on the acknowledged sequence numbers."""
+                # Update sent_unacknowledged_base to the lowest acknowledged seq number
+        if self.__acknowledged_seq_numbers:
+            # Get the smallest acknowledged sequence number
+            new_base = min(self.__acknowledged_seq_numbers)
+            
+            # Move the base forward if it's valid
+            if new_base > self.__sent_unacknowledged_base:
+                self.__sent_unacknowledged_base = new_base
 
     def __send_new_window_packets(self):
         """Send new packets if there's room in the window."""
@@ -169,11 +179,8 @@ class ClientHandlerSACK:
                 )
                 self.__send_packet(packet)
                 self.__next_seq_number += self.__maximum_segment_size
-                self.__last_packet_sent = packet
             else:
                 break
-
-    
 
 
 
