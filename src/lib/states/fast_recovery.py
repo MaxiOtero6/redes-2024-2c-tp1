@@ -3,7 +3,7 @@ from lib.states.slow_start import SlowStart
 from lib.states.state import MSS, State
 
 
-class FastRetransmit(State):
+class FastRecovery(State):
     def __init__(self, cwnd: int, lastACK: int):
         self._ssthresh = cwnd / 2
         self._cwnd = self._ssthresh + 3 * MSS

@@ -1,5 +1,5 @@
 from lib.states.congestion_avoidance import CongestionAvoidance
-from lib.states.fast_retransmit import FastRetransmit
+from lib.states.fast_recovery import FastRecovery
 from lib.states.state import MSS, State
 
 
@@ -23,7 +23,7 @@ class SlowStart(State):
             self._dupACKcount += 1
 
             if self._dupACKcount == 3:
-                return FastRetransmit(self._cwnd, self._lastACKnumber)
+                return FastRecovery(self._cwnd, self._lastACKnumber)
                 # retransmit missing packet
 
             return
