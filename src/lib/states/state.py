@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-MSS = 1  # Packet
+MSS = 512  # Packet payload bytes
 
 
 class State:
