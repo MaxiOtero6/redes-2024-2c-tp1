@@ -2,9 +2,9 @@
 MININET_PYTHON = python3
 PYTHON = python3.11
 TOPOLOGY_SCRIPT = /home/mininet/redes-2024-2c-tp1/src/lib/myTopo.py
-SERVER_COMMAND = "xterm -e python3.11 /home/mininet/redes-2024-2c-tp1/src/start-server.py -H 10.0.0.1 -p 5001 -s /home/mininet/redes-2024-2c-tp1/storage &"
-CLIENT_UPLOAD_COMMAND = "xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/upload.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001 &"
-CLIENT_DOWNLOAD_COMMAND = "xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/download.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001 &"
+SERVER_COMMAND = f"xterm -e python3.11 /home/mininet/redes-2024-2c-tp1/src/start-server.py -H 10.0.0.1 -p 5001 -s /home/mininet/redes-2024-2c-tp1/storage &"
+CLIENT_UPLOAD_COMMAND = f"xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/upload.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001 &"
+CLIENT_DOWNLOAD_COMMAND = f"xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/download.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001 &"
 # Start the Mininet network with dynamic commands
 start_one_server_one_client_upload:
 	@echo "Starting the Mininet network with server and client commands..."
