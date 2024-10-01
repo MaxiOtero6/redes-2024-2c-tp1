@@ -5,7 +5,7 @@ from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
 
 from lib.server.client_handler_sw import ClientHandlerSW
-from lib.server.client_handler_sack_2 import ClientHandlerSACK
+from lib.server.client_handler_sack import ClientHandlerSACK
 from lib.errors.unknown_algorithm import UnknownAlgorithm
 
 
