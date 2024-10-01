@@ -5,7 +5,7 @@ from lib.arguments.constants import MAX_PACKET_SIZE_SW
 import socket
 
 from lib.server.client_handler_sw import ClientHandlerSW
-from lib.server.client_handler_sack import ClientHandlerSACK
+from lib.server.client_handler_sack_2 import ClientHandlerSACK
 from lib.errors.unknown_algorithm import UnknownAlgorithm
 
 
@@ -17,7 +17,9 @@ class Server:
         self.__skt.bind((config.HOST, config.PORT))
         self.__clients_handlers = {}
 
-    def __create_client(self, address: tuple[str, int]) -> ClientHandlerSW | ClientHandlerSACK:
+    def __create_client(
+        self, address: tuple[str, int]
+    ) -> ClientHandlerSW | ClientHandlerSACK:
         match (self.__config.ALGORITHM):
             case "sw":
                 return ClientHandlerSW(
@@ -30,8 +32,7 @@ class Server:
                 )
 
             case _:
-                raise UnknownAlgorithm(
-                    f"Unknown algorithm: {self.__config.ALGORITHM}")
+                raise UnknownAlgorithm(f"Unknown algorithm: {self.__config.ALGORITHM}")
 
     def __listener(self):
         """Listen for packets and route them to the correct client handler."""

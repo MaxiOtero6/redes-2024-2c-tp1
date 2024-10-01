@@ -3,7 +3,7 @@ import time
 from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
 from lib.packets.sack_packet import SACKPacket
 
-MAX_SEQ_NUMBER = 2**32 - 1
+SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512
 
 
@@ -13,7 +13,6 @@ class ClientHandlerSack:
         self.address = address
         self.__socket = socket
         self.__folder_path = folder_path
-        # self.__last_packet_received = None
         self.__last_packet_sent = None
         self.__timeout_count: int = 0
 
@@ -25,7 +24,7 @@ class ClientHandlerSack:
 
     def __start_of_next_seq(self, packet):
         """Gets the end of the packet."""
-        return packet.seq_number + packet.length() % MAX_SEQ_NUMBER
+        return packet.seq_number + packet.length() % SEQUENCE_NUMBER_LIMIT
 
     def __next_seq_number(self):
         """Get the next sequence number."""
