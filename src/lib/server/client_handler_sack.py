@@ -16,21 +16,51 @@ class ClientHandlerSACK:
         self.__maximum_segment_size = 512
         self.__sent_unacknowledged_base = 0
         self.__next_seq_number = 0
-        self.__all_data_payloads = {}       # {seq_number: payload}
+        self.__all_data_payloads = {}  # {seq_number: payload}
         self.__acknowledged_seq_numbers = set()
         self.__final_data_sequence_number = 0
 
         # Receiver
+        self.__out_of_order_buffer = {}  # {seq_number: packet}
+        self.__received_blocks_edges = []  # list of (start_seq, end_seq)
         self.__next_expected_seq_number = 0
-        self.__received_blocks_edges = []   # list of (start_seq, end_seq)
-        self.__out_of_order_buffer = {}       # {seq_number: packet}
-        self.__last_acknowledged_seq_number = 0
+        self.__last_ordered_seq_number_received = 0
+
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        return self.__next_seq_number
 
     def __get_packet(self):
         """Get the next packet from the queue."""
         data = self.data_queue.get()
         packet = SACKPacket.decode(data)
         self.__last_packet_received = packet
+
+    def __create_new_packet(
+        self,
+        seq_number,
+        ack_number,
+        rwin,
+        upl,
+        dwl,
+        ack,
+        syn,
+        fin,
+        block_edges,
+        payload,
+    ):
+        return SACKPacket(
+            seq_number,
+            ack_number,
+            rwin,
+            upl,
+            dwl,
+            ack,
+            syn,
+            fin,
+            block_edges,
+            payload,
+        )
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
@@ -45,7 +75,7 @@ class ClientHandlerSACK:
             self.__last_packet_received.upl,
             self.__last_packet_received.dwl,
             b"",
-            self.__received_blocks_edges  # Send the received blocks as SACK info
+            self.__received_blocks_edges,  # Send the received blocks as SACK info
         )
         self.__send_packet(fin_packet)
 
@@ -58,10 +88,9 @@ class ClientHandlerSACK:
             self.__last_packet_received.upl,
             self.__last_packet_received.dwl,
             b"",
-            []
+            [],
         )
         self.__send_packet(syn_ack_packet)
-
 
     def __handle_fin(self):
         """Handle the final FIN packet."""
@@ -78,7 +107,7 @@ class ClientHandlerSACK:
 
         # Handle the initial SYN packet
         if self.__last_packet_received.syn:
-            self.__handle_syn()  
+            self.__handle_syn()
         else:
             raise Exception("Invalid request")
 
@@ -87,31 +116,34 @@ class ClientHandlerSACK:
         if not (self.__last_packet_received.upl or self.__last_packet_received.dwl):
             raise Exception("Invalid request")
 
-        file_name = self.__handle_file_name()  
+        file_name = self.__handle_file_name()
 
         # Handle file transfer (upload or download)
         if self.__last_packet_received.upl:
             self.__send_sack_ack()
-            self.__handle_upl(file_name)  
+            self.__handle_upl(file_name)
         elif self.__last_packet_received.dwl:
-            self.__handle_dwl(file_name)  
+            self.__handle_dwl(file_name)
 
     # -------------- SENDER METHODS -------------- #
 
-    def __create_new_sender_packet(self, sequence_number, syn, fin, ack, upl, dwl, payload):
+    def __create_new_sender_packet(
+        self, sequence_number, syn, fin, ack, upl, dwl, payload
+    ):
         return SACKPacket(
             sequence_number,
-            self.__sent_unacknowledged_base + 1,    # For sender side, ack number will always be the next sequence number to be sent
+            self.__sent_unacknowledged_base
+            + 1,  # For sender side, ack number will always be the next sequence number to be sent
             self.__window_size,
             upl,
             dwl,
             ack,
             syn,
             fin,
-            [],                                     # No block edges in sender side
+            [],  # No block edges in sender side
             payload,
         )
-    
+
     def __handle_dwl(self, file_name):
         """Handle a download packet."""
         file_path = f"{self.__folder_path}/{file_name}"
@@ -128,7 +160,7 @@ class ClientHandlerSACK:
 
         while self.__sent_unacknowledged_base < self.__final_data_sequence_number:
             self.__wait_for_ack_and_retransmit()
-    
+
     def __construct_all_payloads(self, file_path):
         """Construct and store all the payloads to be sent."""
         with open(file_path, "rb") as file:
@@ -149,7 +181,7 @@ class ClientHandlerSACK:
             # Check if the sequence number exists in the payloads
             if seq_number in self.__all_data_payloads:
                 payload = self.__all_data_payloads[seq_number]
-                
+
                 # Create a new sender packet with the payload
                 packet = self.__create_new_sender_packet(
                     sequence_number=seq_number,
@@ -164,10 +196,10 @@ class ClientHandlerSACK:
                 # Send the packet and update the last packet sent
                 self.__send_packet(packet)
                 self.__last_packet_sent = packet
-    
+
     def __wait_for_ack_and_retransmit(self):
         """Wait for SACKs, and retransmit missing packets."""
-        self.__get_packet()  
+        self.__get_packet()
 
         if self.__last_packet_received.block_edges:
             self.__handle_sack(self.__last_packet_received.block_edges)
@@ -180,15 +212,19 @@ class ClientHandlerSACK:
         # Mark the acknowledged sequence numbers based on SACK blocks in order to avoid re-sending an ACKed payload
         for block in sack_blocks:
             left_edge, right_edge = block
-            
+
             # Iterate over the sequence numbers in the range of [left_edge, right_edge)
             for seq_num in range(left_edge, right_edge, self.__maximum_segment_size):
                 self.__acknowledged_seq_numbers.add(seq_num)
 
         self.__update_sent_unacknowledged_base()
-    
+
         # Retransmit any unacknowledged packets in the current window
-        for seq_num in range(self.__sent_unacknowledged_base, self.__sent_unacknowledged_base + self.__window_size, self.__maximum_segment_size):
+        for seq_num in range(
+            self.__sent_unacknowledged_base,
+            self.__sent_unacknowledged_base + self.__window_size,
+            self.__maximum_segment_size,
+        ):
             if seq_num not in self.__acknowledged_seq_numbers:
                 # If the sequence number has not been acknowledged, retransmit the packet
                 payload = self.__all_data_payloads[seq_num]
@@ -205,18 +241,21 @@ class ClientHandlerSACK:
 
     def __update_sent_unacknowledged_base(self):
         """Update the sent unacknowledged base based on the acknowledged sequence numbers."""
-                # Update sent_unacknowledged_base to the lowest acknowledged seq number
+        # Update sent_unacknowledged_base to the lowest acknowledged seq number
         if self.__acknowledged_seq_numbers:
             # Get the smallest acknowledged sequence number
             new_base = min(self.__acknowledged_seq_numbers)
-            
+
             # Move the base forward if it's valid
             if new_base > self.__sent_unacknowledged_base:
                 self.__sent_unacknowledged_base = new_base
 
     def __send_new_window_packets(self):
         """Send new packets if there's room in the window."""
-        while len(self.__acknowledged_seq_numbers) * self.__maximum_segment_size < self.__window_size:
+        while (
+            len(self.__acknowledged_seq_numbers) * self.__maximum_segment_size
+            < self.__window_size
+        ):
             seq_num = self.__next_seq_number
             if seq_num in self.__all_data_payloads:
                 payload = self.__all_data_payloads[seq_num]
@@ -234,15 +273,13 @@ class ClientHandlerSACK:
             else:
                 break
 
-
-
     # -------------- RECEIVER METHODS -------------- #
 
     def __create_new_sack_packet(self):
         return SACKPacket(
             self.__last_packet_received.seq_number,
             self.__last_packet_received.ack_number,
-            self.__window_size,   
+            self.__window_size,
             False,
             False,
             True,
@@ -251,13 +288,12 @@ class ClientHandlerSACK:
             self.__received_blocks_edges,
             b"",
         )
-    
+
     def __send_sack_ack(self):
         """Send a SACK acknowledgment to the client."""
         sack_packet = self.__create_new_sack_packet(b"")
         self.__send_packet(sack_packet)
-    
-    
+
     def __handle_upl(self, file_name):
         """Handle an upload packet."""
 
@@ -265,9 +301,8 @@ class ClientHandlerSACK:
         print(f"Receiving file: {file_name}")
 
         self.__receive_file_data(file_path)
-        
 
-    '''        
+    """        
     # Receiver
     self.__next_expected_seq_number = 0
     self.__received_in_order_data = []  
@@ -275,25 +310,31 @@ class ClientHandlerSACK:
     self.__out_of_order_buffer = {}         # {seq_number: packet}
     self.__last_acknowledged_seq_number = 0
     self.__received_seq_numbers = set()
-    '''
+    """
 
     def __receive_file_data(self, file_path):
         """Receive file data in chunks and save it to the specified file path."""
-        
-        self.__last_packet_received = self.__get_packet()  
-        
-        while not self.__last_packet_received.fin: 
+
+        self.__last_packet_received = self.__get_packet()
+
+        while not self.__last_packet_received.fin:
 
             # Check if the packet is a valid data packet. If not it gets discarded
-            if self.__last_packet_received.seq_number >= self.__next_expected_seq_number:
+            if (
+                self.__last_packet_received.seq_number
+                >= self.__next_expected_seq_number
+            ):
                 # Process the packet based on its sequence number
-                if self.__last_packet_received.seq_number == self.__next_expected_seq_number:
+                if (
+                    self.__last_packet_received.seq_number
+                    == self.__next_expected_seq_number
+                ):
                     # Correct sequence number, save the data
                     self.__save_file_data(file_path)
-                    
+
                     # Check if there are any out-of-order packets in the buffer
                     self.__check_out_of_order_packets()
-                    
+
                     # Send a SACK acknowledgment
                     self.__send_sack()
 
@@ -302,11 +343,15 @@ class ClientHandlerSACK:
 
                 else:
                     # Out-of-order packet; store it in the buffer
-                    self.__out_of_order_buffer[self.__last_packet_received.seq_number] = self.__last_packet_received.payload
+                    self.__out_of_order_buffer[
+                        self.__last_packet_received.seq_number
+                    ] = self.__last_packet_received.payload
 
             else:
                 # Packet is old and can be ignored
-                print(f"Ignoring old packet with seq number: {self.__last_packet_received.seq_number}")
+                print(
+                    f"Ignoring old packet with seq number: {self.__last_packet_received.seq_number}"
+                )
 
             # Check if the end of file has been reached
             if self.__last_packet_received.fin:
@@ -325,16 +370,14 @@ class ClientHandlerSACK:
 
                 # Move to the next expected sequence number
                 self.__next_expected_seq_number += self.__maximum_segment_size
-                
+
                 # Recursively check for more out-of-order packets
                 self.__check_out_of_order_packets()
 
-    
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
         with open(file_path, "ab") as file:
             file.write(self.__last_packet_received.payload)
-
 
     def __send_sack(self):
         """Send a SACK acknowledgment to the client."""

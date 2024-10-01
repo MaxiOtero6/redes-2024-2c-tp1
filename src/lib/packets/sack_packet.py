@@ -90,6 +90,7 @@ class SACKPacket:
 
         return data
 
+
     @staticmethod
     def decode(data: bytes) -> "SACKPacket":
         seq_number: int
