@@ -8,7 +8,7 @@ SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512
 
 
-class ClientHandlerSack:
+class ClientHandlerSACK:
     def __init__(self, address, socket, folder_path):
         self.data_queue = queue.Queue()
         self.address = address

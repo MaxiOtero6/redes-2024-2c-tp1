@@ -13,7 +13,7 @@ class SACKPacket:
     +--------------------------+--------------------------+--------------------------+--------------------------+
     |                                         Acknowledgment Number (4B)                                        |
     +--------------------------+--------------------------+--------------------------+--------------------------+
-    |   Receiver Window (2B)   |         UPL (1B)         |         DWL (1B)         |       Padding (1B)       |
+    |                 Receiver Window (2B)                |         UPL (1B)         |         DWL (1B)         |
     +--------------------------+--------------------------+--------------------------+--------------------------+
     |         ACK (1B)         |        Blocks (1B)       |         SYN (1B)         |         FIN (1B)         |
     +--------------------------+--------------------------+--------------------------+--------------------------+
@@ -79,7 +79,7 @@ class SACKPacket:
 
         data += pack("!HBB", self.rwnd, self.upl, self.dwl)
 
-        data += pack("!BBBB", self.ack, self.blocks, self.syn, self.fin)
+        data += pack("!BBBB", self.ack, len(self.block_edges), self.syn, self.fin)
 
         for edges in self.block_edges:
             data += pack("!II", edges[LEFT_EDGE], edges[RIGHT_EDGE])

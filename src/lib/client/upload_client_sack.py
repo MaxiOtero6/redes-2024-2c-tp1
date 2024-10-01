@@ -1,11 +1,10 @@
 import os
-from collections import deque, stack
+from collections import deque
 import time
 from lib.packets.sack_packet import SACKPacket
-from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
-    MAX_PACKET_SIZE_SW,
+    MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
     MAX_TIMEOUT_PER_PACKET,
     TIMEOUT,
@@ -16,7 +15,7 @@ SEQUENCE_NUMBER_LIMIT = 2**32
 WINDOW_SIZE = 512
 
 
-class UploadClient:
+class UploadClientSACK:
     def __init__(self, config: UploadConfig):
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -41,7 +40,7 @@ class UploadClient:
 
     def __last_recived_seq_number(self):
         """Get the last received sequence number."""
-        if self.__last_Fpacket_received is None:
+        if self.__last_packet_received is None:
             return 0
         return self.__last_packet_received.seq_number
 
@@ -66,7 +65,7 @@ class UploadClient:
         if not self.__unacked_packets:
             return False
 
-        first_packet = self.__unacked_packets[0][0].ack
+        first_packet = self.__unacked_packets[0][0]
 
         return (
             self.__last_packet_received.ack
@@ -77,11 +76,13 @@ class UploadClient:
         return SACKPacket(
             self.__next_seq_number(),
             self.__last_recived_seq_number(),
+            WINDOW_SIZE,
             syn,
             fin,
             ack,
             upl,
             dwl,
+            [],
             payload,
         )
 
@@ -100,15 +101,15 @@ class UploadClient:
         self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
-            packet = SWPacket.decode(data)
+            data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
+            packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera
         except (socket.timeout, BlockingIOError):
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -134,7 +135,7 @@ class UploadClient:
         """
 
         # Use an stack to store the queue order
-        unacked_packets = stack()
+        unacked_packets = []
 
         for start, end in self.__last_packet_received.block_edges:
             while self.__unacked_packets:
@@ -152,8 +153,8 @@ class UploadClient:
                 # packet was acked, no need to resend
                 self.__in_flight_bytes -= packet.length()
 
-        for packet, time in self.__unacked_packets:
-            self.__unacked_packets.appendleft((packet, time))
+        while unacked_packets:
+            self.__unacked_packets.appendleft(unacked_packets.pop())
 
     def __wait_for_ack(self):
         self.__get_packet()
@@ -204,7 +205,9 @@ class UploadClient:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) > 0 or self.__unacked_packets:
-                while len(data) > 0 and self.__in_flight_bytes < WINDOW_SIZE:
+                while (
+                    len(data) > 0 and self.__in_flight_bytes < WINDOW_SIZE
+                ):  # TODO: prevent to send more than the window size
                     packet = self.__create_new_packet(
                         False,
                         False,
@@ -213,10 +216,10 @@ class UploadClient:
                         False,
                         data,
                     )
-                    
+
                     self.__send_packet(packet)
                     data_sent += len(data)
-                    
+
                     print_sent_progress(data_sent, file_length)
                     # sleep for a second
                     time.sleep(0.1)

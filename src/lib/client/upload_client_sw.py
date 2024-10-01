@@ -2,11 +2,16 @@ import os
 import time
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
+from lib.arguments.constants import (
+    MAX_PACKET_SIZE_SW,
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 import socket
 
 
-class UploadClient:
+class UploadClientSW:
     def __init__(self, config: UploadConfig):
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,7 +61,6 @@ class UploadClient:
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
-
 
         except socket.timeout:
             self.__timeout_count += 1
