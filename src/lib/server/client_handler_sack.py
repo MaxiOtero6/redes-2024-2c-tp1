@@ -238,7 +238,7 @@ class ClientHandlerSACK:
 
     # -------------- RECEIVER METHODS -------------- #
 
-    def __create_new_sack_packet(self, payload):
+    def __create_new_sack_packet(self):
         return SACKPacket(
             self.__last_packet_received.seq_number,
             self.__last_packet_received.ack_number,
@@ -249,7 +249,7 @@ class ClientHandlerSACK:
             False,
             False,
             self.__received_blocks_edges,
-            payload,
+            b"",
         )
     
     def __send_sack_ack(self):
@@ -338,13 +338,5 @@ class ClientHandlerSACK:
 
     def __send_sack(self):
         """Send a SACK acknowledgment to the client."""
-        sack_packet = self.__create_new_packet(
-            False,
-            False,
-            True,
-            self.__last_packet_received.upl,
-            self.__last_packet_received.dwl,
-            b"",
-            self.__received_blocks_edges
-        )
+        sack_packet = self.__create_new_sack_packet()
         self.__send_packet(sack_packet)
