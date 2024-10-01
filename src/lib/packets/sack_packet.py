@@ -15,7 +15,7 @@ class SACKPacket:
     +--------------------------+--------------------------+--------------------------+--------------------------+
     |                 Receiver Window (2B)                |         UPL (1B)         |         DWL (1B)         |
     +--------------------------+--------------------------+--------------------------+--------------------------+
-    |         ACK (1B)         |        Blocks (1B)       |         SYN (1B)         |         FIN (1B)         |
+    |         ACK (1B)         |          SYN (1B)        |         FIN (1B)         |       Blocks (1B)        |
     +--------------------------+--------------------------+--------------------------+--------------------------+
     |                                         Left Edge of Block 1 (4B)                                         |
     +--------------------------+--------------------------+--------------------------+--------------------------+
@@ -79,7 +79,8 @@ class SACKPacket:
 
         data += pack("!HBB", self.rwnd, self.upl, self.dwl)
 
-        data += pack("!BBBB", self.ack, len(self.block_edges), self.syn, self.fin)
+        data += pack("!BBBB", self.ack, self.syn,
+                     self.fin, len(self.block_edges))
 
         for edges in self.block_edges:
             data += pack("!II", edges[LEFT_EDGE], edges[RIGHT_EDGE])
@@ -99,9 +100,9 @@ class SACKPacket:
         upl: bool
         dwl: bool
         ack: bool
-        blocks: int
         syn: bool
         fin: bool
+        blocks: int
         payload: bytes
         block_edges: list[tuple[int]] = list()
 
@@ -109,14 +110,15 @@ class SACKPacket:
 
         rwnd, upl, dwl = unpack("!HBB", data[8:12:])
 
-        ack, blocks, syn, fin = unpack("!BBBB", data[12:16:])
+        ack, syn, fin, blocks = unpack("!BBBB", data[12:16:])
 
         for i in range(blocks):
-            block_edges.append(unpack("!II", data[16 + 8 * i : 24 + 8 * i :]))
+            block_edges.append(unpack("!II", data[16 + 8 * i: 24 + 8 * i:]))
 
         header_length: int = HEADER_MIN_LENGTH_BYTES + blocks * BOTH_EDGE_SIZES
         payload: bytes = data[header_length::]
 
         return SACKPacket(
-            seq_number, ack_number, rwnd, upl, dwl, ack, syn, fin, block_edges, payload
+            seq_number, ack_number, rwnd,
+            upl, dwl, ack, syn, fin, block_edges, payload
         )
