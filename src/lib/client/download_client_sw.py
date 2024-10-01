@@ -1,6 +1,6 @@
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW
+from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_TIMEOUT_PER_PACKET, TIMEOUT
 import socket
 
 
@@ -11,6 +11,7 @@ class DownloadClient:
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
+        self.__timeout_count: int = 0
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -52,12 +53,29 @@ class DownloadClient:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        data = self.__skt.recv(MAX_PACKET_SIZE_SW)
-        packet = SWPacket.decode(data)
-        self.__last_packet_received = packet
+        self.__skt.settimeout(TIMEOUT)
+
+        try:
+            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            packet = SWPacket.decode(data)
+            self.__last_packet_received = packet
+            self.__timeout_count = 0
+
+        except socket.timeout:
+            self.__timeout_count += 1
+            print(f"Timeout!!: {self.__timeout_count}")
+
+            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+                raise BrokenPipeError(
+                    "Max timeouts reached, is client alive?. Closing connection"
+                )
+
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
+        self.__skt.settimeout(0)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
@@ -132,7 +150,9 @@ class DownloadClient:
         file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
         while not self.__last_packet_received.fin:
-            print(f"Received packet of size {len(self.__last_packet_received.payload)}")
+            print(
+                f"Received packet of size {len(self.__last_packet_received.payload)}"
+            )
 
             self.__save_file_data(file_path)
 
@@ -142,9 +162,15 @@ class DownloadClient:
         self.__send_ack()
 
     def run(self):
-        print("Starting file download")
-        self.__send_comm_start()
-        self.__send_file_name_request()
-        self.__recieve_file_data()
-        print(f"File received: {self.__config.FILE_NAME}")
-        self.__skt.close()
+        try:
+            print("Starting file download")
+            self.__send_comm_start()
+            self.__send_file_name_request()
+            self.__recieve_file_data()
+            print(f"File received: {self.__config.FILE_NAME}")
+            self.__skt.close()
+
+        except BrokenPipeError as e:
+            print(str(e))
+            self.__skt.close()
+            exit()
