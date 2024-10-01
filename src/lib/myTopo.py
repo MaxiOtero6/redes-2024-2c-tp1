@@ -40,22 +40,21 @@ def start_server_and_clients(num_hosts, server_command, client_command):
 
     # Start the server on host h1
     server_host = net.get('h1')
-
-    #server_command = f"xterm -e python3.11 /home/mininet/redes-2024-2c-tp1/src/start-server.py -H 10.0.0.1 -p 5001 -s /home/mininet/redes-2024-2c-tp1/storage &"
+    print(f"Starting server on {server_host.name}...")
     server_output = server_host.cmd(server_command)
 
-    # Open an xterm window for the server host and run the server command
-    print(f"Starting server on {server_host.name}...")
     time.sleep(2)
+
     # Start clients on other hosts
     for i in range(2, num_hosts + 1):
-        client_host = net.get('h2')
-        #client_command = f"xterm -hold -e  python3.11 /home/mininet/redes-2024-2c-tp1/src/upload.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg  -H 10.0.0.1 -p 5001 &"
+        client_host = net.get(f'h{i}')
         client_output = client_host.cmd(client_command)
+        print(client_output)
 
     # Wait for user input before stopping
     input("Press Enter to stop the network...")
     net.stop()
+
 
 
 if __name__ == '__main__':
@@ -64,7 +63,7 @@ if __name__ == '__main__':
 
     # Example: Pass server and client commands via command line
     if len(sys.argv) < 4:
-        print("Usage: python3.11 topology.py <num_hosts> <server_command> <client_command>")
+        print("Usage: python3 topology.py <num_hosts> <server_command> <client_command>")
         sys.exit(1)
 
     num_hosts = int(sys.argv[1])
