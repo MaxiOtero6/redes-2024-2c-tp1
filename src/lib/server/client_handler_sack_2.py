@@ -23,19 +23,97 @@ class ClientHandlerSack:
         self.__received_blocks_edges = []  # [(start, end)]
         self.__last_ordered_packet_received = None
 
+    def __start_of_next_seq(self, packet):
+        """Gets the end of the packet."""
+        return packet.seq_number + packet.length() % MAX_SEQ_NUMBER
+
     def __next_seq_number(self):
         """Get the next sequence number."""
         if self.__last_packet_sent is None:
             return 0
-        return (
-            len(self.__last_packet_sent.payload) + self.__last_packet_sent.seq_number
-        ) % MAX_SEQ_NUMBER
+        return self.__start_of_next_seq(self.__last_packet_sent)
 
-    # def __last_recived_seq_number(self):
-    #     """Get the last received sequence number."""
-    #     if self.__last_ordered_packet_received is None:
-    #         return 0
-    #     return self.__last_ordered_packet_received.seq_number
+    def __next_expected_seq_number(self):
+        """Get the next expected sequence number."""
+        if self.__last_ordered_packet_received is None:
+            return 0
+        return self.__start_of_next_seq(self.__last_ordered_packet_received)
+
+    def __last_packet_is_ordered(self):
+        """Check if the last packet received is in order."""
+        if self.__last_ordered_packet_received is None:
+            return True
+
+        return (
+            self.__last_packet_received.seq_number == self.__next_expected_seq_number()
+        )
+
+    def __reorder_packets(self):
+        while self.__next_expected_seq_number() in self.__out_of_order_packets:
+            self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
+                self.__next_expected_seq_number()
+            )
+            self.__in_order_packets.put(self.__last_ordered_packet_received)
+
+            _, first_block_end = self.__received_blocks_edges[0]
+
+            if first_block_end == self.__start_of_next_seq(
+                self.__last_ordered_packet_received
+            ):
+                self.__received_blocks_edges.pop(0)
+            else:
+                self.__received_blocks_edges[0] = (
+                    self.__last_ordered_packet_received.seq_number,
+                    first_block_end,
+                )
+
+    def __add_in_order_packet(self):
+        """Add the in order packet to the queue."""
+        self.__last_ordered_packet_received = self.__last_packet_received
+        self.__in_order_packets.put(self.__last_ordered_packet_received)
+
+        # Try to reorder the buffered packets
+        self.__reorder_packets()
+
+    def __add_out_of_order_packet(self):
+        """Add the out of order packet to the queue."""
+        start = self.__last_packet_received.seq_number
+        end = start + len(self.__last_packet_received.payload)
+
+        self.__out_of_order_packets[start] = self.__last_ordered_packet_received
+
+        for block_index in range(len(self.__received_blocks_edges)):
+            block_start, block_end = self.__received_blocks_edges[block_index]
+
+            if end == block_start:
+                self.__received_blocks_edges[block_index] = (start, block_end)
+                return
+
+            if start == block_end:
+                self.__received_blocks_edges[block_index] = (block_start, end)
+
+                if block_index + 1 < len(self.__received_blocks_edges):
+                    next_block_start, _ = self.__received_blocks_edges[block_index + 1]
+                    if next_block_start == end:
+                        _, next_block_end = self.__received_blocks_edges[
+                            block_index + 1
+                        ]
+                        self.__received_blocks_edges[block_index] = (
+                            start,
+                            next_block_end,
+                        )
+
+            if end < block_start:
+                self.__received_blocks_edges.insert(block_index, (start, end))
+                return
+
+        self.__received_blocks_edges.append((start, end))
+
+    def __end_of_last_ordered_packet(self):
+        """Get the last received sequence number."""
+        if self.__last_ordered_packet_received is None:
+            return 0
+        return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     # def __last_packet_is_new(self):
     #     """Check if the last packet received is new."""
@@ -52,7 +130,7 @@ class ClientHandlerSack:
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SACKPacket(
             self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+            self.__end_of_last_ordered_packet(),
             RWND,
             syn,
             fin,
@@ -100,110 +178,17 @@ class ClientHandlerSack:
         )
         self.__send_packet(ack_packet)
 
-    def __wait_for_ack(self):
-        """Wait for an appropriate acknowledgment from the client."""
-        self.__get_packet()
-
-        while not self.__last_packet_sent_was_ack():
-            self.__send_packet(self.__last_packet_sent)
-            self.__get_packet()
-
-    def __end_of_packet(self, packet):
-        """Gets the end of the packet."""
-        return packet.seq_number + len(packet.payload) % MAX_SEQ_NUMBER
-
-    def __next_expected_seq_number(self):
-        """Get the next expected sequence number."""
-        if self.__last_ordered_packet_received is None:
-            return 0
-        return self.__end_of_packet(self.__last_ordered_packet_received)
-
-    def __last_packet_is_ordered(self):
-        """Check if the last packet received is in order."""
-        if self.__last_ordered_packet_received is None:
-            return True
-
-        return (
-            self.__last_packet_received.seq_number == self.__next_expected_seq_number()
-        )
-
     def __send_sack(self):
         """Send a SACK packet to the client."""
         sack_packet = self.__create_new_packet(
             False,
             False,
-            False,
+            True,
             self.__last_packet_received.upl,
             self.__last_packet_received.dwl,
             b"",
         )
         self.__send_packet(sack_packet)
-
-    def __add_out_of_order_packet(self):
-        """Add the out of order packet to the queue."""
-        start = self.__last_packet_received.seq_number
-        end = start + len(self.__last_packet_received.payload)
-
-        self.__out_of_order_packets[start] = self.__last_ordered_packet_received
-
-        for block_index in range(len(self.__received_blocks_edges)):
-            block_start, block_end = self.__received_blocks_edges[block_index]
-
-            if end + 1 == block_start:
-                self.__received_blocks_edges[block_index] = (start, block_end)
-                return
-
-            if start - 1 == block_end:
-                self.__received_blocks_edges[block_index] = (block_start, end)
-
-                if block_index + 1 < len(self.__received_blocks_edges):
-                    next_block_start, _ = self.__received_blocks_edges[block_index + 1]
-                    if next_block_start == end + 1:
-                        _, next_block_end = self.__received_blocks_edges[
-                            block_index + 1
-                        ]
-                        self.__received_blocks_edges[block_index] = (
-                            start,
-                            next_block_end,
-                        )
-
-            if end < block_start:
-                self.__received_blocks_edges.insert(block_index, (start, end))
-                return
-
-        self.__received_blocks_edges.append((start, end))
-
-    def __reorder_packets(self):
-        while self.__next_expected_seq_number() in self.__out_of_order_packets:
-            self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
-                self.__next_expected_seq_number()
-            )
-            self.__in_order_packets.put(self.__last_ordered_packet_received)
-
-            _, first_block_end = self.__received_blocks_edges[0]
-
-            if first_block_end == self.__end_of_packet(
-                self.__last_ordered_packet_received
-            ):
-                self.__received_blocks_edges.pop(0)
-            else:
-                self.__received_blocks_edges[0] = (
-                    self.__last_ordered_packet_received.seq_number,
-                    first_block_end,
-                )
-
-    def __wait_for_data(self):
-        """Wait for data from the client."""
-        self.__get_packet()
-
-        while not (self.__last_packet_received.upl and self.__last_packet_is_ordered()):
-            print("Waiting for data")
-            self.__add_out_of_order_packet()
-            self.__send_sack()
-            self.__get_packet()
-
-        # Now I have at least one ordered packet
-        self.__reorder_packets()
 
     def __send_fin(self):
         """Send the final FIN packet."""
@@ -217,6 +202,27 @@ class ClientHandlerSack:
         )
         self.__send_packet(fin_packet)
         self.__wait_for_ack()
+
+    def __wait_for_ack(self):
+        """Wait for an appropriate acknowledgment from the client."""
+        self.__get_packet()
+
+        while not self.__last_packet_sent_was_ack():
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
+
+    def __wait_for_data(self):
+        """Wait for data from the client."""
+        self.__get_packet()
+
+        while not (self.__last_packet_received.upl and self.__last_packet_is_ordered()):
+            print("Waiting for data")
+            self.__add_out_of_order_packet()
+            self.__send_sack()
+            self.__get_packet()
+
+        # The last packet received is ordered
+        self.__add_in_order_packet()
 
     def __save_file_data(self, file_path):
         """Save file data received from the client."""

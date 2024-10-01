@@ -90,6 +90,8 @@ class SACKPacket:
 
         return data
 
+    def length(self) -> int:
+        return len(self.encode())
 
     @staticmethod
     def decode(data: bytes) -> "SACKPacket":
