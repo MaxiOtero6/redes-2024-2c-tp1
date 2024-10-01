@@ -27,6 +27,7 @@ class UploadClient:
         self.__unacked_packets = deque()  # list of unacked packets (packet, time)
         self.__last_packet_sent = None
         self.__last_packet_received = None
+        self.__in_flight_bytes = 0
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -91,6 +92,7 @@ class UploadClient:
 
         while self.__unacked_packets:
             packet, _ = self.__unacked_packets.popleft()
+            self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
 
     def __get_packet(self):
@@ -122,6 +124,7 @@ class UploadClient:
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
+        self.__in_flight_bytes += packet.length()
 
     def __out_of_order_ack_received(self):
         """
@@ -147,6 +150,7 @@ class UploadClient:
                     break
 
                 # packet was acked, no need to resend
+                self.__in_flight_bytes -= packet.length()
 
         for packet, time in self.__unacked_packets:
             self.__unacked_packets.appendleft((packet, time))
@@ -158,6 +162,10 @@ class UploadClient:
             self.__out_of_order_ack_received()
             self.__get_packet()
             # TODO: follow a cumulative ack policy
+
+        # The first in order packet was acked
+        self.__unacked_packets.popleft()
+        self.__in_flight_bytes -= self.__last_packet_received.length()
 
     def __send_comm_start(self):
         start_package = self.__create_new_packet(
@@ -192,32 +200,31 @@ class UploadClient:
     def __send_file_data(self):
         file_length = os.path.getsize(self.__config.SOURCE_PATH)
 
-        # falta que mande toda la ventana
-
         with open(self.__config.SOURCE_PATH, "rb") as file:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
-            while len(data) != 0:
-                packet = self.__create_new_packet(
-                    False,
-                    False,
-                    False,
-                    True,
-                    False,
-                    data,
-                )
-                self.__send_packet(packet)
-                data_sent += len(data)
-                print(
-                    f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
-                )
+            while len(data) > 0 or self.__unacked_packets:
+                while len(data) > 0 and self.__in_flight_bytes < WINDOW_SIZE:
+                    packet = self.__create_new_packet(
+                        False,
+                        False,
+                        False,
+                        True,
+                        False,
+                        data,
+                    )
+                    
+                    self.__send_packet(packet)
+                    data_sent += len(data)
+                    
+                    print_sent_progress(data_sent, file_length)
+                    # sleep for a second
+                    time.sleep(0.1)
+
+                    data = file.read(MAX_PAYLOAD_SIZE)
+
                 self.__wait_for_ack()
                 print("Ack received for packet")
-
-                # sleep for a second
-                time.sleep(0.1)
-
-                data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
         fin_packet = self.__create_new_packet(
@@ -247,3 +254,9 @@ class UploadClient:
             print(str(e))
             self.__skt.close()
             exit()
+
+
+def print_sent_progress(data_sent, file_length):
+    print(
+        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
+    )
