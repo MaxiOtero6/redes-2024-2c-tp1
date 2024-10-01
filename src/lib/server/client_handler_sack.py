@@ -16,18 +16,15 @@ class ClientHandlerSACK:
         self.__maximum_segment_size = 512
         self.__sent_unacknowledged_base = 0
         self.__next_seq_number = 0
-        self.__all_data_payloads = {} # {seq_number: payload}
+        self.__all_data_payloads = {}       # {seq_number: payload}
         self.__acknowledged_seq_numbers = set()
         self.__final_data_sequence_number = 0
 
         # Receiver
-        self.__expected_seq_number = 0
-        self.__received_data = {}  # {seq_number: payload}
-        self.__received_blocks_edges = []  # list of (start_seq, end_seq)
-        self.__last_ack_number = 0
-        self.out_of_order_buffer = {}  # {seq_number: packet}
-        self.__sack_blocks = []  # SACK blocks to send
-        self.__received_seq_numbers = set()
+        self.__next_expected_seq_number = 0
+        self.__received_data = []         # {seq_number: payload}
+        self.__received_blocks_edges = []   # list of (start_seq, end_seq)
+        self.out_of_order_buffer = {}       # {seq_number: packet}
 
     def __get_packet(self):
         """Get the next packet from the queue."""
@@ -51,7 +48,6 @@ class ClientHandlerSACK:
             self.__received_blocks_edges  # Send the received blocks as SACK info
         )
         self.__send_packet(fin_packet)
-        self.__wait_for_ack()
 
     def __handle_syn(self):
         """Handle the initial SYN packet."""
@@ -99,13 +95,6 @@ class ClientHandlerSACK:
             self.__handle_upl(file_name)  
         elif self.__last_packet_received.dwl:
             self.__handle_dwl(file_name)  
-
-    def __save_file_data(self, file_path):
-        """Save file data received from the client."""
-        with open(file_path, "ab") as file:
-            file.write(self.__last_packet_received.payload)
-
-
 
     # -------------- SENDER METHODS -------------- #
 
@@ -247,13 +236,12 @@ class ClientHandlerSACK:
 
 
 
-
-    # Receiver:
+    # -------------- RECEIVER METHODS -------------- #
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload, block_edges):
         return SACKPacket(
             self.__next_seq_number(),
-            self.__last_received_ack_number(),
+            self.__last_received_ack_number,
             0,  # Por ahora queda en cero, EDITAR
             upl,
             dwl,
@@ -327,6 +315,12 @@ class ClientHandlerSACK:
                 
                 # Recursively check for more out-of-order packets
                 self.__check_out_of_order_packets()
+
+    
+    def __save_file_data(self, file_path):
+        """Save file data received from the client."""
+        with open(file_path, "ab") as file:
+            file.write(self.__last_packet_received.payload)
 
 
     def __send_sack_ack(self):
