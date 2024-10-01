@@ -1,39 +1,24 @@
 # Variables
-PYTHON=python3
-SERVER_SCRIPT=src/start-server.py
-UPLOAD_SCRIPT=src/upload.py
-DOWNLOAD_SCRIPT=src/download.py
-STORAGE_DIR=./storage
-MININET_TOPOLOGY=single,2
-MININET_OPTIONS=--mac --switch ovsk --controller remote
+PYTHON = python3.11
+TOPOLOGY_SCRIPT = /home/mininet/redes-2024-2c-tp1/src/topology.py
+SERVER_COMMAND = "xterm -e python3.11 /home/mininet/redes-2024-2c-tp1/src/start-server.py -H 10.0.0.1 -p 5001 -s /home/mininet/redes-2024-2c-tp1/storage"
+CLIENT_UPLOAD_COMMAND = "xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/upload.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001"
+CLIENT_DOWNLOAD_COMMAND = "xterm -hold -e python3.11 /home/mininet/redes-2024-2c-tp1/src/download.py -s '/home/mininet/redes-2024-2c-tp1/upload-data/sos-groso.jpg' -n sos-groso.jpg -H 10.0.0.1 -p 5001"
+# Start the Mininet network with dynamic commands
+start_one_server_one_client_upload:
+	@echo "Starting the Mininet network with server and client commands..."
+	@sudo $(PYTHON) $(TOPOLOGY_SCRIPT) $2 "$(SERVER_COMMAND)" "$(CLIENT_COMMAND)"
 
-# Mininet command
-MN=sudo mn --topo $(MININET_TOPOLOGY) $(MININET_OPTIONS)
 
-# Phony targets
-.PHONY: all clean run_server run_client upload download
+start_one_server_two_clients_upload:
+	@echo "Starting the Mininet network with server and client commands..."
+	@sudo $(PYTHON) $(TOPOLOGY_SCRIPT) $3 "$(SERVER_COMMAND)" "$(CLIENT_COMMAND)"
 
-# Default target
-all: clean
 
-# Clean storage directory
-clean:
-	rm -rf $(STORAGE_DIR)
-	mkdir -p $(STORAGE_DIR)
+# Stop the Mininet network
+stop_network:
+	@echo "Stopping the Mininet network..."
+	@sudo mn -c
 
-# Run the server in Mininet
-run_server:
-	# Start Mininet and run the server script in the background
-	$(MN) & sleep 2; \
-	$(PYTHON) $(SERVER_SCRIPT) -H 10.0.0.1 -p 5001 -s $(STORAGE_DIR)
-
-# Upload a file to the server in Mininet
-upload:
-	$(MN) -- bash -c "$(PYTHON) $(UPLOAD_SCRIPT) -H 10.0.0.1 -p 5001 -s /path/to/local/file -n filename"
-
-# Download a file from the server in Mininet
-download:
-	$(MN) -- bash -c "$(PYTHON) $(DOWNLOAD_SCRIPT) -H 10.0.0.1 -p 5001 -d /path/to/save/file -n filename"
-
-# Run all (server and client upload/download)
-run_all: run_server upload download
+# Default target: Start network
+all: start_network
