@@ -69,7 +69,14 @@ class UploadClientSACK:
 
         return (
             self.__last_packet_received.ack
-            and first_packet.seq_number == self.__last_packet_received.ack_number
+            and first_packet.seq_number
+            == self.__last_packet_received.ack_number  # TODO: Ver el caso en el que el ACK sea mas grande y el caso en el que el ACK de toda la vuelta
+        )
+
+    def __sack_received(self):
+        return (
+            self.__last_packet_received.ack
+            and not self.__last_packet_received.block_edges
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
@@ -127,7 +134,7 @@ class UploadClientSACK:
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
-    def __out_of_order_ack_received(self):
+    def __handle_sack(self):
         """
         Handle the case when an out of order ack is received.
         If it has a block edge, check if there is an unacked packet waiting for that block edge,
@@ -159,10 +166,15 @@ class UploadClientSACK:
     def __wait_for_ack(self):
         self.__get_packet()
 
-        while not self.__in_order_ack_received():
-            self.__out_of_order_ack_received()
-            self.__get_packet()
+        while True:
             # TODO: follow a cumulative ack policy
+            self.__get_packet()
+
+            if self.__sack_received():
+                self.__handle_sack()
+
+            if self.__in_order_ack_received():
+                break
 
         # The first in order packet was acked
         self.__unacked_packets.popleft()
