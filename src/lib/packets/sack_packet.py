@@ -39,7 +39,6 @@ class SACKPacket:
     upl: bool
     dwl: bool
     ack: bool
-    blocks: int
     syn: bool
     fin: bool
     block_edges: list[tuple[int]]
@@ -68,7 +67,6 @@ class SACKPacket:
         self.syn = syn
         self.fin = fin
         self.block_edges = block_edges
-        self.blocks = len(block_edges)
 
     def encode(self) -> bytes:
         data: bytes = b""

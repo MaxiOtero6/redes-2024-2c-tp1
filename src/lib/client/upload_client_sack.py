@@ -1,5 +1,5 @@
 import os
-from collections import deque
+from collections import deque, stack
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.packets.sw_packet import SWPacket
@@ -25,7 +25,6 @@ class UploadClient:
 
         # Sender
         self.__unacked_packets = deque()  # list of unacked packets (packet, time)
-        self.__acked_blocks = []  # list of acked blocks (start, end)
         self.__last_packet_sent = None
         self.__last_packet_received = None
 
@@ -41,7 +40,7 @@ class UploadClient:
 
     def __last_recived_seq_number(self):
         """Get the last received sequence number."""
-        if self.__last_packet_received is None:
+        if self.__last_Fpacket_received is None:
             return 0
         return self.__last_packet_received.seq_number
 
@@ -61,13 +60,17 @@ class UploadClient:
     #     """Check if the first unacked packet is timeout."""
     #     return self.__time_to_first_unacked_packed_timeout() == 0
 
-    # def __last_packet_sent_was_ack(self):
-    #     """Check if the last packet sent was an acknowledgment."""
-    #     return (
-    #         self.__last_packet_received.ack
-    #         and self.__last_packet_sent.seq_number
-    #         == self.__last_packet_received.ack_number
-    #     )
+    def __in_order_ack_received(self):
+        """Check if the received packet acked the first unacked packet."""
+        if not self.__unacked_packets:
+            return False
+
+        first_packet = self.__unacked_packets[0][0].ack
+
+        return (
+            self.__last_packet_received.ack
+            and first_packet.seq_number == self.__last_packet_received.ack_number
+        )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SACKPacket(
@@ -82,7 +85,13 @@ class UploadClient:
         )
 
     def __resend_window(self):
-        pass
+        """Resend all packets in the window."""
+
+        # Maybe shrink the window size here
+
+        while self.__unacked_packets:
+            packet, _ = self.__unacked_packets.popleft()
+            self.__send_packet(packet)
 
     def __get_packet(self):
         """Get the next packet from the queue."""
@@ -94,7 +103,8 @@ class UploadClient:
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
-        except socket.timeout:
+        # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera
+        except (socket.timeout, BlockingIOError):
             self.__timeout_count += 1
             print(f"Timeout!!: {self.__timeout_count}")
 
@@ -103,27 +113,51 @@ class UploadClient:
                     "Max timeouts reached, is client alive?. Closing connection"
                 )
 
-            self.__send_packet(self.__last_packet_sent)
+            self.__resend_window()
             self.__get_packet()
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
+        self.__skt.settimeout(TIMEOUT)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
 
-    def __send_unacked_packets(self):
-        """Send all unacked packets."""
-        for packet, time_sent in self.__unacked_packets:
-            if time.time() - time_sent > TIMEOUT:
-                self.__send_packet(packet)
+    def __out_of_order_ack_received(self):
+        """
+        Handle the case when an out of order ack is received.
+        If it has a block edge, check if there is an unacked packet waiting for that block edge,
+        if so, remove it from the unacked packets.
+        """
+
+        # Use an stack to store the queue order
+        unacked_packets = stack()
+
+        for start, end in self.__last_packet_received.block_edges:
+            while self.__unacked_packets:
+                packet, time = self.__unacked_packets.popleft()
+
+                if packet.seq_number < start:
+                    # packet not in any block edge
+                    unacked_packets.append((packet, time))
+
+                elif self.__start_of_next_seq(packet) > end:
+                    # packet not in this block edge, add it back and try the next one
+                    self.__unacked_packets.appendleft((packet, time))
+                    break
+
+                # packet was acked, no need to resend
+
+        for packet, time in self.__unacked_packets:
+            self.__unacked_packets.appendleft((packet, time))
 
     def __wait_for_ack(self):
         self.__get_packet()
 
-        while not self.__last_packet_sent_was_ack():
-            self.__send_unacked_packets()
+        while not self.__in_order_ack_received():
+            self.__out_of_order_ack_received()
             self.__get_packet()
+            # TODO: follow a cumulative ack policy
 
     def __send_comm_start(self):
         start_package = self.__create_new_packet(
@@ -157,6 +191,8 @@ class UploadClient:
 
     def __send_file_data(self):
         file_length = os.path.getsize(self.__config.SOURCE_PATH)
+
+        # falta que mande toda la ventana
 
         with open(self.__config.SOURCE_PATH, "rb") as file:
             data_sent = 0
