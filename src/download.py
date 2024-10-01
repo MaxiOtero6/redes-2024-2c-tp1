@@ -1,6 +1,6 @@
 from lib.arguments.args_parser import ArgsParser
 from lib.client.download_config import DownloadConfig
-from lib.client.download_client import DownloadClient
+from lib.client.download_client_sw import DownloadClient
 from sys import argv
 
 
