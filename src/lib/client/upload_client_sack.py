@@ -1,9 +1,19 @@
 import os
+from collections import deque
 import time
+from lib.packets.sack_packet import SACKPacket
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
+from lib.arguments.constants import (
+    MAX_PACKET_SIZE_SW,
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 import socket
+
+SEQUENCE_NUMBER_LIMIT = 2**32
+WINDOW_SIZE = 512
 
 
 class UploadClient:
@@ -11,14 +21,23 @@ class UploadClient:
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
+        self.__timeout_count: int = 0
+
+        # Sender
+        self.__unacked_packets = deque()  # list of unacked packets (packet, time)
+        self.__acked_blocks = []  # list of acked blocks (start, end)
         self.__last_packet_sent = None
         self.__last_packet_received = None
+
+    def __start_of_next_seq(self, packet):
+        """Get the start of the next sequence number."""
+        return (packet.seq_number + packet.length()) % SEQUENCE_NUMBER_LIMIT
 
     def __next_seq_number(self):
         """Get the next sequence number."""
         if self.__last_packet_sent is None:
             return 0
-        return 1 - self.__last_packet_sent.seq_number
+        return self.__start_of_next_seq(self.__last_packet_sent)
 
     def __last_recived_seq_number(self):
         """Get the last received sequence number."""
@@ -26,16 +45,32 @@ class UploadClient:
             return 0
         return self.__last_packet_received.seq_number
 
-    def __last_packet_sent_was_ack(self):
-        """Check if the last packet sent was an acknowledgment."""
-        return (
-            self.__last_packet_received.ack
-            and self.__last_packet_sent.seq_number
-            == self.__last_packet_received.ack_number
-        )
+    def __time_to_first_unacked_packed_timeout(self):
+        """Get the time to the first unacked packet timeout."""
+        if len(self.__unacked_packets) == 0:
+            return 0
+
+        elapsed_time = time.time() - self.__unacked_packets[0][1]
+
+        if elapsed_time > TIMEOUT:
+            return 0
+
+        return TIMEOUT - elapsed_time
+
+    # def __first_unacked_packed_is_timeout(self):
+    #     """Check if the first unacked packet is timeout."""
+    #     return self.__time_to_first_unacked_packed_timeout() == 0
+
+    # def __last_packet_sent_was_ack(self):
+    #     """Check if the last packet sent was an acknowledgment."""
+    #     return (
+    #         self.__last_packet_received.ack
+    #         and self.__last_packet_sent.seq_number
+    #         == self.__last_packet_received.ack_number
+    #     )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
-        return SWPacket(
+        return SACKPacket(
             self.__next_seq_number(),
             self.__last_recived_seq_number(),
             syn,
@@ -46,22 +81,48 @@ class UploadClient:
             payload,
         )
 
+    def __resend_window(self):
+        pass
+
     def __get_packet(self):
         """Get the next packet from the queue."""
-        data = self.__skt.recv(MAX_PACKET_SIZE_SW)
-        packet = SWPacket.decode(data)
-        self.__last_packet_received = packet
+        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+
+        try:
+            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            packet = SWPacket.decode(data)
+            self.__last_packet_received = packet
+            self.__timeout_count = 0
+
+        except socket.timeout:
+            self.__timeout_count += 1
+            print(f"Timeout!!: {self.__timeout_count}")
+
+            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+                raise BrokenPipeError(
+                    "Max timeouts reached, is client alive?. Closing connection"
+                )
+
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
+        self.__unacked_packets.append((packet, time.time()))
+
+    def __send_unacked_packets(self):
+        """Send all unacked packets."""
+        for packet, time_sent in self.__unacked_packets:
+            if time.time() - time_sent > TIMEOUT:
+                self.__send_packet(packet)
 
     def __wait_for_ack(self):
         self.__get_packet()
 
         while not self.__last_packet_sent_was_ack():
-            self.__send_packet(self.__last_packet_sent)
+            self.__send_unacked_packets()
             self.__get_packet()
 
     def __send_comm_start(self):
@@ -137,10 +198,16 @@ class UploadClient:
         print("Fin ack received")
 
     def run(self):
-        print("Starting file upload")
-        self.__send_comm_start()
-        self.__send_file_name()
-        self.__send_file_data()
-        self.__send_comm_fin()
-        print(f"File sent: {self.__config.FILE_NAME}")
-        self.__skt.close()
+        try:
+            print("Starting file upload")
+            self.__send_comm_start()
+            self.__send_file_name()
+            self.__send_file_data()
+            self.__send_comm_fin()
+            print(f"File sent: {self.__config.FILE_NAME}")
+            self.__skt.close()
+
+        except BrokenPipeError as e:
+            print(str(e))
+            self.__skt.close()
+            exit()
