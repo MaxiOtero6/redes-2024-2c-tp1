@@ -1,4 +1,5 @@
 import queue
+from collections import deque
 import time
 from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
 from lib.packets.sack_packet import SACKPacket
@@ -17,14 +18,14 @@ class ClientHandlerSack:
         self.__timeout_count: int = 0
 
         # Reciever
-        self.__in_order_packets = queue.Queue()  # [packets]
+        self.__in_order_packets = deque()  # [packets]
         self.__out_of_order_packets = {}  # {seq_number: packets}
         self.__received_blocks_edges = []  # [(start, end)]
         self.__last_ordered_packet_received = None
 
     def __start_of_next_seq(self, packet):
-        """Gets the end of the packet."""
-        return packet.seq_number + packet.length() % SEQUENCE_NUMBER_LIMIT
+        """Get the start of the next sequence number."""
+        return (packet.seq_number + packet.length()) % SEQUENCE_NUMBER_LIMIT
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -52,7 +53,7 @@ class ClientHandlerSack:
             self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
                 self.__next_expected_seq_number()
             )
-            self.__in_order_packets.put(self.__last_ordered_packet_received)
+            self.__in_order_packets.append(self.__last_ordered_packet_received)
 
             _, first_block_end = self.__received_blocks_edges[0]
 
@@ -69,7 +70,7 @@ class ClientHandlerSack:
     def __add_in_order_packet(self):
         """Add the in order packet to the queue."""
         self.__last_ordered_packet_received = self.__last_packet_received
-        self.__in_order_packets.put(self.__last_ordered_packet_received)
+        self.__in_order_packets.append(self.__last_ordered_packet_received)
 
         # Try to reorder the buffered packets
         self.__reorder_packets()
@@ -226,8 +227,8 @@ class ClientHandlerSack:
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
         with open(file_path, "ab") as file:
-            while not self.__in_order_packets.empty():
-                packet = self.__in_order_packets.get()
+            while not self.__in_order_packets:
+                packet = self.__in_order_packets.popleft()
                 file.write(packet.payload)
 
     def __send_file_data(self, file_path):
