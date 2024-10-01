@@ -1,5 +1,5 @@
 # Variables
-MININET_PYTHON = python3.8.5
+MININET_PYTHON = python3.8.10
 PYTHON = python3.11
 TOPOLOGY_SCRIPT = /home/mininet/redes-2024-2c-tp1/src/myTopo.py
 SERVER_COMMAND = "xterm -e python3.11 /home/mininet/redes-2024-2c-tp1/src/start-server.py -H 10.0.0.1 -p 5001 -s /home/mininet/redes-2024-2c-tp1/storage"
