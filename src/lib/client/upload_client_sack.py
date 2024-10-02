@@ -26,10 +26,10 @@ class UploadClientSACK:
         self.__unacked_packets = (
             deque()
         )  # list of unacked packets (packet, time) # noqa
-        self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
         self.__timeout_count = 0
+        self.__last_packet_created = None
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -37,9 +37,9 @@ class UploadClientSACK:
 
     def __next_seq_number(self):
         """Get the next sequence number."""
-        if self.__last_packet_sent is None:
+        if self.__last_packet_created is None:
             return 0
-        return self.__start_of_next_seq(self.__last_packet_sent)
+        return self.__start_of_next_seq(self.__last_packet_created)
 
     def __last_received_seq_number(self):
         """Get the last received sequence number."""
@@ -85,7 +85,7 @@ class UploadClientSACK:
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
-        return SACKPacket(
+        packet = SACKPacket(
             self.__next_seq_number(),
             self.__last_received_seq_number(),
             WINDOW_SIZE,
@@ -98,6 +98,9 @@ class UploadClientSACK:
             payload,
         )
 
+        self.__last_packet_created = packet
+        return packet
+
     def __resend_window(self):
         """Resend all packets in the window."""
 
@@ -105,6 +108,7 @@ class UploadClientSACK:
         size: int = len(self.__unacked_packets)
         for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
+            print(f"Resending packet {packet.seq_number}")
             self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
 
@@ -135,11 +139,7 @@ class UploadClientSACK:
         """Send a packet to the client."""
         if random.random() < 0.8:
             self.__skt.sendto(packet.encode(), self.__address)
-            # self.__socket.sendto(packet.encode(), self.address)
-        else:
-            print("PERDI")
-            
-        self.__last_packet_sent = packet
+
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
@@ -251,7 +251,9 @@ class UploadClientSACK:
                     data = file.read(MAX_PAYLOAD_SIZE)
 
                 self.__wait_for_ack()
-                print("Ack received for packet")
+                print(
+                    f"Ack received for packet {self.__last_packet_received.seq_number}"
+                )
 
     def __send_comm_fin(self):
         fin_packet = self.__create_new_packet(
@@ -263,7 +265,7 @@ class UploadClientSACK:
             b"",
         )
         self.__send_packet(fin_packet)
-        print("Fin packet sent")
+        print(f"Fin packet sent {fin_packet.seq_number}")
         self.__wait_for_ack()
         print("Fin ack received")
 

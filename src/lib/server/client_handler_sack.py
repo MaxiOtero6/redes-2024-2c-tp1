@@ -1,5 +1,4 @@
-import debugpy
-import random
+# import debugpy
 import os
 import queue
 from collections import deque
@@ -14,7 +13,7 @@ from lib.packets.sack_packet import SACKPacket
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512 * 10
 
-debugpy.debug_this_thread()
+# debugpy.debug_this_thread()
 
 
 class ClientHandlerSACK:
@@ -108,9 +107,6 @@ class ClientHandlerSACK:
         )
 
     def __reorder_blocks(self):
-        print(f"\n\nentra: {self.__received_blocks_edges}")
-        print(f"expected seq: {self.__next_expected_seq_number()}")
-        print(f"out of orders: {self.__out_of_order_packets}")
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
             self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
                 self.__next_expected_seq_number()
@@ -126,7 +122,6 @@ class ClientHandlerSACK:
                     self.__next_expected_seq_number(),
                     first_block_end,
                 )
-        print(f"sale: {self.__received_blocks_edges}\n\n")
 
     def __add_in_order_packet(self):
         """Add the in order packet to the queue."""
@@ -138,12 +133,8 @@ class ClientHandlerSACK:
 
     def __add_out_of_order_packet(self):
         """Add the out of order packet to the queue."""
-        print("ADD")
         start = self.__last_packet_received.seq_number
         end = start + self.__last_packet_received.length()
-
-        if start == 19053:
-            print("aca")
 
         self.__out_of_order_packets[start] = self.__last_packet_received
 
@@ -161,7 +152,8 @@ class ClientHandlerSACK:
                     next_block_start, _ = self.__received_blocks_edges[block_index + 1]
                     if next_block_start == end:
                         _, next_block_end = self.__received_blocks_edges.pop(
-                            block_index + 1)
+                            block_index + 1
+                        )
                         self.__received_blocks_edges[block_index] = (
                             block_start,
                             next_block_end,
@@ -172,7 +164,7 @@ class ClientHandlerSACK:
                 self.__received_blocks_edges.insert(block_index, (start, end))
                 return
 
-        if ((start, end) not in self.__received_blocks_edges):
+        if (start, end) not in self.__received_blocks_edges:
             self.__received_blocks_edges.append((start, end))
 
     def __end_of_last_ordered_packet(self):
@@ -218,9 +210,7 @@ class ClientHandlerSACK:
             data = self.data_queue.get(timeout=timeout)
             packet = SACKPacket.decode(data)
 
-            # discard
-            if packet.seq_number >= self.__next_expected_seq_number():
-                self.__last_packet_received = packet
+            self.__last_packet_received = packet
 
             self.__timeout_count = 0
 
@@ -346,15 +336,17 @@ class ClientHandlerSACK:
     def __wait_for_data(self):
         """Wait for data from the client."""
         while True:
-            print("Waiting for data")
-
             self.__get_packet()
 
             if self.__last_packet_received.upl and self.__last_packet_is_ordered():
                 break
 
-            self.__add_out_of_order_packet()
-            self.__send_sack()
+            if (
+                self.__last_packet_received.seq_number
+                >= self.__next_expected_seq_number()
+            ):
+                self.__add_out_of_order_packet()
+                self.__send_sack()
 
         # The last packet received is ordered
         self.__add_in_order_packet()
@@ -407,7 +399,7 @@ class ClientHandlerSACK:
 
         self.__wait_for_data()
 
-        while not self.__last_packet_received.fin:
+        while not self.__last_ordered_packet_received.fin:
             self.__save_file_data(file_path)
             self.__send_ack()
             self.__wait_for_data()

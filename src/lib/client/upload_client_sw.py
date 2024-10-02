@@ -1,4 +1,5 @@
 import os
+import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
@@ -75,8 +76,8 @@ class UploadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__skt.settimeout(0)
-        self.__skt.sendto(packet.encode(), self.__address)
+        if random.random() < 0.8:
+            self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __wait_for_ack(self):
