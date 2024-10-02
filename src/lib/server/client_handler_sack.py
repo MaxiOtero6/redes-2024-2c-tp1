@@ -1,11 +1,11 @@
 import queue
 from collections import deque
 import time
-from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET
+from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-RWND = 512
+RWND = 512 * 10
 
 # import debugpy
 # debugpy.debug_this_thread()
@@ -151,8 +151,7 @@ class ClientHandlerSACK:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            # data = self.data_queue.get(timeout=TIMEOUT)
-            data = self.data_queue.get()
+            data = self.data_queue.get(timeout=TIMEOUT)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -260,9 +259,6 @@ class ClientHandlerSACK:
                 )
                 self.__send_packet(data_packet)
                 self.__wait_for_ack()
-
-                # sleep for a second
-                time.sleep(0.1)
 
                 data = file.read(MAX_PAYLOAD_SIZE)
                 first_packet = False

@@ -12,7 +12,7 @@ from lib.arguments.constants import (
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-WINDOW_SIZE = 512
+WINDOW_SIZE = 512 * 10
 
 
 class UploadClientSACK:
@@ -103,7 +103,7 @@ class UploadClientSACK:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        # self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
 
         try:
             data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
@@ -126,7 +126,6 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        # self.__skt.settimeout(TIMEOUT)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
@@ -235,8 +234,6 @@ class UploadClientSACK:
                     data_sent += len(data)
 
                     print_sent_progress(data_sent, file_length)
-                    # sleep for a second
-                    time.sleep(0.1)
 
                     data = file.read(MAX_PAYLOAD_SIZE)
 

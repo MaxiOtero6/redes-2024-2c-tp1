@@ -139,10 +139,6 @@ class UploadClientSW:
                 )
                 self.__wait_for_ack()
                 print("Ack received for packet")
-
-                # sleep for a second
-                time.sleep(0.1)
-
                 data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
