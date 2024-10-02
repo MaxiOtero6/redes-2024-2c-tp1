@@ -24,7 +24,7 @@ class UploadClientSACK:
         # Sender
         self.__unacked_packets = (
             deque()
-        )  # list of unacked packets (packet, time)
+        )  # list of unacked packets (packet, time) # noqa
         self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
@@ -58,9 +58,16 @@ class UploadClientSACK:
 
         return TIMEOUT - elapsed_time
 
-    # def __first_unacked_packed_is_timeout(self):
-    #     """Check if the first unacked packet is timeout."""
-    #     return self.__time_to_first_unacked_packed_timeout() == 0
+    def __packet_was_acked(self, packet):
+        """Check if the packet was acked."""
+        ack_number = self.__last_packet_received.ack_number
+        end_of_packet = self.__start_of_next_seq(packet)
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            ack_number += SEQUENCE_NUMBER_LIMIT
+
+        return end_of_packet <= ack_number
 
     def __new_ack_received(self):
         """Check if the received packet acked the first unacked packet."""
@@ -69,16 +76,11 @@ class UploadClientSACK:
 
         first_packet = self.__unacked_packets[0][0]
 
-        return (
-            self.__last_packet_received.ack
-            and self.__start_of_next_seq(first_packet)
-            >= self.__last_packet_received.ack_number
-        )
+        return self.__packet_was_acked(first_packet)
 
     def __sack_received(self):
         return (
-            self.__last_packet_received.ack
-            and self.__last_packet_received.block_edges
+            self.__last_packet_received.ack and self.__last_packet_received.block_edges
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
@@ -174,11 +176,11 @@ class UploadClientSACK:
             if self.__new_ack_received():
                 break
 
-        # The first in order packet was acked
+        # At least one packet was acked, remove all acked packets from the unacked packets # noqa
         while self.__unacked_packets:
             packet, time = self.__unacked_packets.popleft()
 
-            if self.__start_of_next_seq(packet) > self.__last_packet_received.ack_number:
+            if not self.__packet_was_acked(packet):
                 self.__unacked_packets.appendleft((packet, time))
                 break
 
