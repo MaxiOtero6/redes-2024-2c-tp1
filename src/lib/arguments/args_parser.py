@@ -278,15 +278,16 @@ optional arguments:
 
     def load_args(self, argv: list[str]) -> Config:
 
-        match self.__get_binary(argv[0]):
-            case constants.DOWNLOAD_CLIENT:
-                return self.__load_download_client_args(argv)
+        binary = self.__get_binary(argv[0])
+    
+        if binary == constants.DOWNLOAD_CLIENT:
+            return self.__load_download_client_args(argv)
 
-            case constants.UPLOAD_CLIENT:
-                return self.__load_upload_client_args(argv)
+        elif binary == constants.UPLOAD_CLIENT:
+            return self.__load_upload_client_args(argv)
 
-            case constants.SERVER:
-                return self.__load_server_args(argv)
+        elif binary == constants.SERVER:
+            return self.__load_server_args(argv)
 
-            case _:
-                raise UnknownBinary("Unknown executed binary")
+        else:
+            raise UnknownBinary("Unknown executed binary")
