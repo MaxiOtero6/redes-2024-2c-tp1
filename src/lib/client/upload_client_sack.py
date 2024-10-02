@@ -1,0 +1,276 @@
+import os
+from collections import deque
+import time
+from lib.packets.sack_packet import SACKPacket
+from lib.client.upload_config import UploadConfig
+from lib.arguments.constants import (
+    MAX_PACKET_SIZE_SACK,
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
+import socket
+
+SEQUENCE_NUMBER_LIMIT = 2**32
+WINDOW_SIZE = 512 * 10
+
+
+class UploadClientSACK:
+    def __init__(self, config: UploadConfig):
+        self.__config = config
+        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__address = (self.__config.HOST, self.__config.PORT)
+
+        # Sender
+        self.__unacked_packets = deque()  # list of unacked packets (packet, time)
+        self.__last_packet_sent = None
+        self.__last_packet_received = None
+        self.__in_flight_bytes = 0
+        self.__timeout_count = 0
+
+    def __start_of_next_seq(self, packet):
+        """Get the start of the next sequence number."""
+        return (packet.seq_number + packet.length()) % SEQUENCE_NUMBER_LIMIT
+
+    def __next_seq_number(self):
+        """Get the next sequence number."""
+        if self.__last_packet_sent is None:
+            return 0
+        return self.__start_of_next_seq(self.__last_packet_sent)
+
+    def __last_recived_seq_number(self):
+        """Get the last received sequence number."""
+        if self.__last_packet_received is None:
+            return 0
+        return self.__last_packet_received.seq_number
+
+    def __time_to_first_unacked_packed_timeout(self):
+        """Get the time to the first unacked packet timeout."""
+        if len(self.__unacked_packets) == 0:
+            return 0
+
+        elapsed_time = time.time() - self.__unacked_packets[0][1]
+
+        if elapsed_time > TIMEOUT:
+            return 0
+
+        return TIMEOUT - elapsed_time
+
+    # def __first_unacked_packed_is_timeout(self):
+    #     """Check if the first unacked packet is timeout."""
+    #     return self.__time_to_first_unacked_packed_timeout() == 0
+
+    def __in_order_ack_received(self):
+        """Check if the received packet acked the first unacked packet."""
+        if not self.__unacked_packets:
+            return False
+
+        first_packet = self.__unacked_packets[0][0]
+
+        return (
+            self.__last_packet_received.ack
+            and self.__start_of_next_seq(first_packet)
+            == self.__last_packet_received.ack_number
+        )
+
+    def __sack_received(self):
+        return (
+            self.__last_packet_received.ack and self.__last_packet_received.block_edges
+        )
+
+    def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        return SACKPacket(
+            self.__next_seq_number(),
+            self.__last_recived_seq_number(),
+            WINDOW_SIZE,
+            upl,
+            dwl,
+            ack,
+            syn,
+            fin,
+            [],
+            payload,
+        )
+
+    def __resend_window(self):
+        """Resend all packets in the window."""
+
+        # Maybe shrink the window size here
+        while self.__unacked_packets:
+            packet, _ = self.__unacked_packets.popleft()
+            self.__in_flight_bytes -= packet.length()
+            self.__send_packet(packet)
+
+    def __get_packet(self):
+        """Get the next packet from the queue."""
+        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+
+        try:
+            data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
+            packet = SACKPacket.decode(data)
+            self.__last_packet_received = packet
+            self.__timeout_count = 0
+
+        # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera
+        except (socket.timeout, BlockingIOError):
+            self.__timeout_count += 1
+            print(f"Timeout number: {self.__timeout_count}")
+
+            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+                raise BrokenPipeError(
+                    "Max timeouts reached, is client alive?. Closing connection"
+                )
+
+            self.__resend_window()
+            self.__get_packet()
+
+    def __send_packet(self, packet: SACKPacket):
+        """Send a packet to the client."""
+        self.__skt.sendto(packet.encode(), self.__address)
+        self.__last_packet_sent = packet
+        self.__unacked_packets.append((packet, time.time()))
+        self.__in_flight_bytes += packet.length()
+
+    def __sack_received(self):
+        return (
+            self.__last_packet_received.ack
+            and not self.__last_packet_received.block_edges
+        )
+
+    def __handle_sack(self):
+        """
+        Handle the case when an out of order ack is received.
+        If it has a block edge, check if there is an unacked packet waiting for that block edge,
+        if so, remove it from the unacked packets.
+        """
+
+        # Use an stack to store the queue order
+        unacked_packets = []
+
+        for start, end in self.__last_packet_received.block_edges:
+            while self.__unacked_packets:
+                packet, time = self.__unacked_packets.popleft()
+
+                if packet.seq_number < start:
+                    # packet not in any block edge
+                    unacked_packets.append((packet, time))
+
+                elif self.__start_of_next_seq(packet) > end:
+                    # packet not in this block edge, add it back and try the next one
+                    self.__unacked_packets.appendleft((packet, time))
+                    break
+
+                # packet was acked, no need to resend
+                self.__in_flight_bytes -= packet.length()
+
+        while unacked_packets:
+            self.__unacked_packets.appendleft(unacked_packets.pop())
+
+    def __wait_for_ack(self):
+        while True:
+            # TODO: follow a cumulative ack policy
+            self.__get_packet()
+
+            if self.__sack_received():
+                self.__handle_sack()
+
+            if self.__in_order_ack_received():
+                break
+
+        # The first in order packet was acked
+        packet, _ = self.__unacked_packets.popleft()
+        self.__in_flight_bytes -= packet.length()
+
+    def __send_comm_start(self):
+        start_package = self.__create_new_packet(
+            True,
+            False,
+            False,
+            True,
+            False,
+            b"",
+        )
+        self.__send_packet(start_package)
+        print("Download start packet sent")
+
+        self.__wait_for_ack()
+        print("Start ack received")
+
+    def __send_file_name(self):
+        file_name_package = self.__create_new_packet(
+            True,
+            False,
+            False,
+            True,
+            False,
+            self.__config.FILE_NAME.encode(),
+        )
+        self.__send_packet(file_name_package)
+        print(f"File name request sent: {self.__config.FILE_NAME}")
+
+        self.__wait_for_ack()
+        print("File name ack received")
+
+    def __send_file_data(self):
+        file_length = os.path.getsize(self.__config.SOURCE_PATH)
+
+        with open(self.__config.SOURCE_PATH, "rb") as file:
+            data_sent = 0
+            data = file.read(MAX_PAYLOAD_SIZE)
+            while len(data) > 0 or self.__unacked_packets:
+                while (
+                    len(data) > 0 and self.__in_flight_bytes < WINDOW_SIZE
+                ):  # TODO: prevent to send more than the window size
+                    packet = self.__create_new_packet(
+                        False,
+                        False,
+                        False,
+                        True,
+                        False,
+                        data,
+                    )
+
+                    self.__send_packet(packet)
+                    data_sent += len(data)
+
+                    print_sent_progress(data_sent, file_length)
+
+                    data = file.read(MAX_PAYLOAD_SIZE)
+
+                self.__wait_for_ack()
+                print("Ack received for packet")
+
+    def __send_comm_fin(self):
+        fin_packet = self.__create_new_packet(
+            False,
+            True,
+            False,
+            True,
+            False,
+            b"",
+        )
+        self.__send_packet(fin_packet)
+        print("Fin packet sent")
+        self.__wait_for_ack()
+        print("Fin ack received")
+
+    def run(self):
+        try:
+            print("Starting file upload")
+            self.__send_comm_start()
+            self.__send_file_name()
+            self.__send_file_data()
+            self.__send_comm_fin()
+            print(f"File sent: {self.__config.FILE_NAME}")
+            self.__skt.close()
+
+        except BrokenPipeError as e:
+            print(str(e))
+            self.__skt.close()
+            exit()
+
+
+def print_sent_progress(data_sent, file_length):
+    print(
+        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
+    )

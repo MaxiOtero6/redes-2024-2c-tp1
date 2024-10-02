@@ -2,17 +2,23 @@ import os
 import time
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_PAYLOAD_SIZE
+from lib.arguments.constants import (
+    MAX_PACKET_SIZE_SW,
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 import socket
 
 
-class UploadClient:
+class UploadClientSW:
     def __init__(self, config: UploadConfig):
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
+        self.__timeout_count: int = 0
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -48,12 +54,29 @@ class UploadClient:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        data = self.__skt.recv(MAX_PACKET_SIZE_SW)
-        packet = SWPacket.decode(data)
-        self.__last_packet_received = packet
+        self.__skt.settimeout(TIMEOUT)
+
+        try:
+            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            packet = SWPacket.decode(data)
+            self.__last_packet_received = packet
+            self.__timeout_count = 0
+
+        except socket.timeout:
+            self.__timeout_count += 1
+            print(f"Timeout!!: {self.__timeout_count}")
+
+            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+                raise BrokenPipeError(
+                    "Max timeouts reached, is client alive?. Closing connection"
+                )
+
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
+        self.__skt.settimeout(0)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
@@ -116,10 +139,6 @@ class UploadClient:
                 )
                 self.__wait_for_ack()
                 print("Ack received for packet")
-
-                # sleep for a second
-                time.sleep(0.1)
-
                 data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
@@ -137,10 +156,16 @@ class UploadClient:
         print("Fin ack received")
 
     def run(self):
-        print("Starting file upload")
-        self.__send_comm_start()
-        self.__send_file_name()
-        self.__send_file_data()
-        self.__send_comm_fin()
-        print(f"File sent: {self.__config.FILE_NAME}")
-        self.__skt.close()
+        try:
+            print("Starting file upload")
+            self.__send_comm_start()
+            self.__send_file_name()
+            self.__send_file_data()
+            self.__send_comm_fin()
+            print(f"File sent: {self.__config.FILE_NAME}")
+            self.__skt.close()
+
+        except BrokenPipeError as e:
+            print(str(e))
+            self.__skt.close()
+            exit()

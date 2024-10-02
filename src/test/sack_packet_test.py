@@ -3,47 +3,24 @@ from lib.packets.sack_packet import SACKPacket
 
 
 class SACKPacketTest(unittest.TestCase):
-    def test_encode_sack_packet(self):
-        seq_number: int = 414243
-        ack_number: int = 434241
-        rwnd: int = 15
-        upl: bool = False
-        dwl: bool = False
-        ack: bool = True
-        # blocks: int = 2
-        syn: bool = False
-        fin: bool = False
-        block_edges: list[tuple[int]] = [(1, 0), (25, 414243)]
-        payload: bytes = b"\xFF\xEF"
-
-        packet: SACKPacket = SACKPacket(
-            seq_number, ack_number, rwnd, upl, dwl, ack, syn, fin, block_edges, payload
-        )
-
-        expected_bytes: bytes = (
-            b"\x00\x06R#\x00\x06\xa0A\x00\x0f\x00\x00\x01\x02\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x19\x00\x06R#\xff\xef"
-        )
-
-        res: bytes = packet.encode()
-
-        self.assertEqual(expected_bytes, res)
-
     def test_decode_sack_packet(self):
-        expected_seq_number: int = 414243
-        expected_ack_number: int = 434241
-        expected_rwnd: int = 15
-        expected_upl: bool = False
+        expected_seq_number: int = 0
+        expected_ack_number: int = 0
+        expected_rwnd: int = 0
+        expected_upl: bool = True
         expected_dwl: bool = False
         expected_ack: bool = True
-        expected_blocks: int = 2
         expected_syn: bool = False
-        expected_fin: bool = False
-        expected_block_edges: list[tuple[int]] = [(1, 0), (25, 414243)]
-        expected_payload: bytes = b"\xFF\xEF"
+        expected_fin: bool = True
+        # blocks: int = 2
+        expected_block_edges: list[tuple[int]] = [(1, 0), (0, 1)]
+        expected_payload: bytes = b"\xFF"
 
         data: bytes = (
-            b"\x00\x06R#\x00\x06\xa0A\x00\x0f\x00\x00\x01\x02\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x19\x00\x06R#\xff\xef"
-        )
+            b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x00\x00"
+            + b"\x01" + b"\x00" + b"\x01" + b"\x00" + b"\x01" + b"\x02"
+            + b"\x00\x00\x00\x01\x00\x00\x00\x00" +
+            b"\x00\x00\x00\x00\x00\x00\x00\x01" + b"\xFF")
 
         res: SACKPacket = SACKPacket.decode(data)
 
@@ -53,8 +30,35 @@ class SACKPacketTest(unittest.TestCase):
         self.assertEqual(expected_upl, res.upl)
         self.assertEqual(expected_dwl, res.dwl)
         self.assertEqual(expected_ack, res.ack)
-        self.assertEqual(expected_blocks, res.blocks)
         self.assertEqual(expected_syn, res.syn)
         self.assertEqual(expected_fin, res.fin)
         self.assertEqual(expected_block_edges, res.block_edges)
         self.assertEqual(expected_payload, res.payload)
+
+    def test_encode_sack_packet(self):
+        seq_number: int = 0
+        ack_number: int = 0
+        rwnd: int = 0
+        upl: bool = True
+        dwl: bool = False
+        ack: bool = True
+        syn: bool = False
+        fin: bool = True
+        # blocks: int = 2
+        block_edges: list[tuple[int]] = [(1, 0), (0, 1)]
+        payload: bytes = b"\xFF"
+
+        packet: SACKPacket = SACKPacket(
+            seq_number, ack_number, rwnd, upl, dwl, ack, syn, fin, block_edges, payload
+        )
+
+        expected_bytes: bytes = (
+            b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x00\x00"
+            + b"\x01" + b"\x00" + b"\x01" + b"\x00" + b"\x01" + b"\x02"
+            + b"\x00\x00\x00\x01\x00\x00\x00\x00" +
+            b"\x00\x00\x00\x00\x00\x00\x00\x01" + b"\xFF"
+        )
+
+        res: bytes = packet.encode()
+
+        self.assertEqual(expected_bytes, res)
