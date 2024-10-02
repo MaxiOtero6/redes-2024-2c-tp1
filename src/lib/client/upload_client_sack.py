@@ -1,5 +1,6 @@
 import os
 from collections import deque
+import random
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.client.upload_config import UploadConfig
@@ -101,7 +102,8 @@ class UploadClientSACK:
         """Resend all packets in the window."""
 
         # Maybe shrink the window size here
-        while self.__unacked_packets:
+        size: int = len(self.__unacked_packets)
+        for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
             self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
@@ -131,7 +133,12 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__skt.sendto(packet.encode(), self.__address)
+        if random.random() < 0.8:
+            self.__skt.sendto(packet.encode(), self.__address)
+            # self.__socket.sendto(packet.encode(), self.address)
+        else:
+            print("PERDI")
+            
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()

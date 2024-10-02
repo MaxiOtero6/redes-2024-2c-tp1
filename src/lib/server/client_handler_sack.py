@@ -1,3 +1,5 @@
+import debugpy
+import random
 import os
 import queue
 from collections import deque
@@ -12,8 +14,7 @@ from lib.packets.sack_packet import SACKPacket
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512 * 10
 
-# import debugpy
-# debugpy.debug_this_thread()
+debugpy.debug_this_thread()
 
 
 class ClientHandlerSACK:
@@ -106,7 +107,10 @@ class ClientHandlerSACK:
             self.__last_packet_received.ack and self.__last_packet_received.block_edges
         )
 
-    def __reorder_packets(self):
+    def __reorder_blocks(self):
+        print(f"\n\nentra: {self.__received_blocks_edges}")
+        print(f"expected seq: {self.__next_expected_seq_number()}")
+        print(f"out of orders: {self.__out_of_order_packets}")
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
             self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
                 self.__next_expected_seq_number()
@@ -115,15 +119,14 @@ class ClientHandlerSACK:
 
             _, first_block_end = self.__received_blocks_edges[0]
 
-            if first_block_end == self.__start_of_next_seq(
-                self.__last_ordered_packet_received
-            ):
+            if first_block_end == self.__next_expected_seq_number():
                 self.__received_blocks_edges.pop(0)
             else:
                 self.__received_blocks_edges[0] = (
-                    self.__last_ordered_packet_received.seq_number,
+                    self.__next_expected_seq_number(),
                     first_block_end,
                 )
+        print(f"sale: {self.__received_blocks_edges}\n\n")
 
     def __add_in_order_packet(self):
         """Add the in order packet to the queue."""
@@ -131,12 +134,16 @@ class ClientHandlerSACK:
         self.__in_order_packets.append(self.__last_ordered_packet_received)
 
         # Try to reorder the buffered packets
-        self.__reorder_packets()
+        self.__reorder_blocks()
 
     def __add_out_of_order_packet(self):
         """Add the out of order packet to the queue."""
+        print("ADD")
         start = self.__last_packet_received.seq_number
-        end = start + len(self.__last_packet_received.payload)
+        end = start + self.__last_packet_received.length()
+
+        if start == 19053:
+            print("aca")
 
         self.__out_of_order_packets[start] = self.__last_packet_received
 
@@ -153,19 +160,20 @@ class ClientHandlerSACK:
                 if block_index + 1 < len(self.__received_blocks_edges):
                     next_block_start, _ = self.__received_blocks_edges[block_index + 1]
                     if next_block_start == end:
-                        _, next_block_end = self.__received_blocks_edges[
-                            block_index + 1
-                        ]
+                        _, next_block_end = self.__received_blocks_edges.pop(
+                            block_index + 1)
                         self.__received_blocks_edges[block_index] = (
-                            start,
+                            block_start,
                             next_block_end,
                         )
+                return
 
             if end < block_start:
                 self.__received_blocks_edges.insert(block_index, (start, end))
                 return
 
-        self.__received_blocks_edges.append((start, end))
+        if ((start, end) not in self.__received_blocks_edges):
+            self.__received_blocks_edges.append((start, end))
 
     def __end_of_last_ordered_packet(self):
         """Get the last received sequence number."""
@@ -191,7 +199,8 @@ class ClientHandlerSACK:
         """Resend all packets in the window."""
 
         # Maybe shrink the window size here
-        while self.__unacked_packets:
+        size: int = len(self.__unacked_packets)
+        for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
             self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
@@ -208,7 +217,11 @@ class ClientHandlerSACK:
         try:
             data = self.data_queue.get(timeout=timeout)
             packet = SACKPacket.decode(data)
-            self.__last_packet_received = packet
+
+            # discard
+            if packet.seq_number >= self.__next_expected_seq_number():
+                self.__last_packet_received = packet
+
             self.__timeout_count = 0
 
         except (queue.Empty, Exception):
@@ -233,6 +246,7 @@ class ClientHandlerSACK:
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
         self.__last_packet_sent = packet
+        # packet.debug()
 
         # TODO: Maybe generalize this
         if self.__last_packet_received.dwl:
@@ -277,6 +291,8 @@ class ClientHandlerSACK:
                 self.__handle_sack()
 
             if self.__new_ack_received():
+                self.__last_ordered_packet_received = self.__last_packet_received
+                # TODO: check
                 break
 
         # At least one packet was acked, remove all acked packets from the unacked packets # noqa
@@ -327,14 +343,6 @@ class ClientHandlerSACK:
         self.__send_packet(fin_packet)
         self.__wait_for_ack()
 
-    def __wait_for_ack(self):
-        """Wait for an appropriate acknowledgment from the client."""
-        self.__get_packet()
-
-        while not self.__last_packet_sent_was_ack():
-            self.__send_packet(self.__last_packet_sent)
-            self.__get_packet()
-
     def __wait_for_data(self):
         """Wait for data from the client."""
         while True:
@@ -360,7 +368,7 @@ class ClientHandlerSACK:
 
     def __send_file_data(self, file_path):
         """Send file data to the client."""
-        file_length = os.path.getsize(self.__config.SOURCE_PATH)
+        file_length = os.path.getsize(file_path)
 
         with open(file_path, "rb") as file:
             data_sent = 0
@@ -374,8 +382,8 @@ class ClientHandlerSACK:
                         False,
                         False,
                         is_first_packet,
-                        True,
                         False,
+                        True,
                         data,
                     )
 

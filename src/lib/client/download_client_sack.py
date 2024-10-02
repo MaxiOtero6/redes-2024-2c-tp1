@@ -44,7 +44,7 @@ class DownloadClientSACK:
 
     def __last_packet_is_ordered(self):
         """Check if the last packet received is in order."""
-        if self.__last_ordered_packet_received is None:
+        if self.__last_packet_received is None:
             return True
 
         return (
@@ -76,7 +76,7 @@ class DownloadClientSACK:
     #         self.__last_packet_received.ack and self.__last_packet_received.block_edges
     #     )
 
-    def __reorder_packets(self):
+    def __reorder_blocks(self):
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
             self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
                 self.__next_expected_seq_number()
@@ -101,12 +101,12 @@ class DownloadClientSACK:
         self.__in_order_packets.append(self.__last_ordered_packet_received)
 
         # Try to reorder the buffered packets
-        self.__reorder_packets()
+        self.__reorder_blocks()
 
     def __add_out_of_order_packet(self):
         """Add the out of order packet to the queue."""
         start = self.__last_packet_received.seq_number
-        end = start + len(self.__last_packet_received.payload)
+        end = start + self.__last_packet_received.payload.length()
 
         self.__out_of_order_packets[start] = self.__last_packet_received
 
@@ -135,7 +135,8 @@ class DownloadClientSACK:
                 self.__received_blocks_edges.insert(block_index, (start, end))
                 return
 
-        self.__received_blocks_edges.append((start, end))
+        if ((start, end) not in self.__received_blocks_edges):
+            self.__received_blocks_edges.append((start, end))
 
     def __end_of_last_ordered_packet(self):
         """Get the last received sequence number."""
@@ -186,6 +187,7 @@ class DownloadClientSACK:
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
+        packet.debug()
 
     def __send_ack(self):
         """Send an acknowledgment to the client."""
@@ -250,7 +252,7 @@ class DownloadClientSACK:
         """Check if the last packet sent was an acknowledgment."""
         return (
             self.__last_packet_received.ack
-            and self.__last_packet_sent.seq_number
+            and self.__start_of_next_seq(self.__last_packet_sent)
             == self.__last_packet_received.ack_number
         )
 
@@ -268,7 +270,7 @@ class DownloadClientSACK:
 
             self.__get_packet()
 
-            if self.__last_packet_received.upl and self.__last_packet_is_ordered():
+            if self.__last_packet_received.dwl and self.__last_packet_is_ordered():
                 break
 
             self.__add_out_of_order_packet()
@@ -339,7 +341,7 @@ class DownloadClientSACK:
             self.__send_ack()
             self.__wait_for_data()
 
-        self.__handle_fin()
+        self.__send_ack()
 
     def run(self):
         try:
