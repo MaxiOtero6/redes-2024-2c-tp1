@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import os
 from lib.server.server_config import ServerConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW
+from lib.arguments.constants import MAX_PACKET_SIZE_SACK, MAX_PACKET_SIZE_SW
 import socket
 
 from lib.server.client_handler_sw import ClientHandlerSW
@@ -32,12 +32,17 @@ class Server:
                 )
 
             case _:
-                raise UnknownAlgorithm(f"Unknown algorithm: {self.__config.ALGORITHM}")
+                raise UnknownAlgorithm(
+                    f"Unknown algorithm: {self.__config.ALGORITHM}")
 
     def __listener(self):
         """Listen for packets and route them to the correct client handler."""
+        MAX_EXPECTED_PACKET_SIZE = MAX_PACKET_SIZE_SW if self.__config.ALGORITHM == "sw" else MAX_PACKET_SIZE_SACK
+
         while True:
-            data, address = self.__skt.recvfrom(MAX_PACKET_SIZE_SW)
+            data, address = self.__skt.recvfrom(
+                MAX_EXPECTED_PACKET_SIZE
+            )
 
             if address not in self.__clients_handlers:
                 client = self.__create_client(address)

@@ -169,7 +169,7 @@ class ClientHandlerSACK:
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
-    def __send_packet(self, packet):
+    def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
         self.__last_packet_sent = packet
@@ -240,7 +240,7 @@ class ClientHandlerSACK:
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
         with open(file_path, "ab") as file:
-            while not self.__in_order_packets:
+            while self.__in_order_packets:
                 packet = self.__in_order_packets.popleft()
                 file.write(packet.payload)
 
@@ -271,6 +271,8 @@ class ClientHandlerSACK:
         # To create / overwrite the file
         with open(file_path, "wb") as _:
             pass
+
+        self.__in_order_packets.clear()  # TODO: prolijo
 
         self.__wait_for_data()
 
