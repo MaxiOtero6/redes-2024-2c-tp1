@@ -62,7 +62,7 @@ class UploadClientSACK:
     #     """Check if the first unacked packet is timeout."""
     #     return self.__time_to_first_unacked_packed_timeout() == 0
 
-    def __in_order_ack_received(self):
+    def __new_ack_received(self):
         """Check if the received packet acked the first unacked packet."""
         if not self.__unacked_packets:
             return False
@@ -72,7 +72,7 @@ class UploadClientSACK:
         return (
             self.__last_packet_received.ack
             and self.__start_of_next_seq(first_packet)
-            == self.__last_packet_received.ack_number
+            >= self.__last_packet_received.ack_number
         )
 
     def __sack_received(self):
@@ -171,12 +171,18 @@ class UploadClientSACK:
             if self.__sack_received():
                 self.__handle_sack()
 
-            if self.__in_order_ack_received():
+            if self.__new_ack_received():
                 break
 
         # The first in order packet was acked
-        packet, _ = self.__unacked_packets.popleft()
-        self.__in_flight_bytes -= packet.length()
+        while self.__unacked_packets:
+            packet, time = self.__unacked_packets.popleft()
+
+            if self.__start_of_next_seq(packet) > self.__last_packet_received.ack_number:
+                self.__unacked_packets.appendleft((packet, time))
+                break
+
+            self.__in_flight_bytes -= packet.length()
 
     def __send_comm_start(self):
         start_package = self.__create_new_packet(
@@ -269,5 +275,5 @@ class UploadClientSACK:
 
 def print_sent_progress(data_sent, file_length):
     print(
-        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}" # noqa
+        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"  # noqa
     )
