@@ -9,10 +9,12 @@ def main():
     parser = ArgsParser()
     config: UploadConfig = parser.load_args(argv)
 
-    if config.ALGORITHM == "sw":
-        client: UploadClientSW = UploadClientSW(config)
-    elif config.ALGORITHM == "sack":
-        client: UploadClientSACK = UploadClientSACK(config)
+    client: UploadClientSW | UploadClientSACK
+    match config.ALGORITHM:
+        case "sw":
+            client: UploadClientSW = UploadClientSW(config)
+        case "sack":
+            client: UploadClientSACK = UploadClientSACK(config)
 
     client.run()
 

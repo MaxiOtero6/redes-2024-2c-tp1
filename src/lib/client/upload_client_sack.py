@@ -20,13 +20,13 @@ class UploadClientSACK:
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
-        self.__timeout_count: int = 0
 
         # Sender
         self.__unacked_packets = deque()  # list of unacked packets (packet, time)
         self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
+        self.__timeout_count = 0
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -69,7 +69,7 @@ class UploadClientSACK:
 
         return (
             self.__last_packet_received.ack
-            and first_packet.seq_number
+            and self.__start_of_next_seq(first_packet)
             == self.__last_packet_received.ack_number  # TODO: Ver el caso en el que el ACK sea mas grande y el caso en el que el ACK de toda la vuelta
         )
 
@@ -97,7 +97,6 @@ class UploadClientSACK:
         """Resend all packets in the window."""
 
         # Maybe shrink the window size here
-
         while self.__unacked_packets:
             packet, _ = self.__unacked_packets.popleft()
             self.__in_flight_bytes -= packet.length()
@@ -128,7 +127,7 @@ class UploadClientSACK:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__skt.settimeout(TIMEOUT)
+        # self.__skt.settimeout(TIMEOUT)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
@@ -164,8 +163,6 @@ class UploadClientSACK:
             self.__unacked_packets.appendleft(unacked_packets.pop())
 
     def __wait_for_ack(self):
-        self.__get_packet()
-
         while True:
             # TODO: follow a cumulative ack policy
             self.__get_packet()
