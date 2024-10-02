@@ -19,7 +19,7 @@ class DownloadClient:
             return 0
         return 1 - self.__last_packet_sent.seq_number
 
-    def __last_recived_seq_number(self):
+    def __last_received_seq_number(self):
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
@@ -42,7 +42,7 @@ class DownloadClient:
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SWPacket(
             self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+            self.__last_received_seq_number(),
             syn,
             fin,
             ack,
