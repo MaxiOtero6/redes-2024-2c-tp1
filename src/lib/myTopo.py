@@ -73,7 +73,7 @@ if __name__ == '__main__':
     num_hosts = int(sys.argv[1])
     server_command = sys.argv[2]
     client_command = sys.argv[3]
-    loss = sys.argv[4]
+    loss = int(sys.argv[4])
     delay = sys.argv[5]
 
     start_server_and_clients(num_hosts, server_command, client_command, loss, delay)

@@ -27,28 +27,20 @@ INVALID_FILE = invalid-file.jpg
 
 # Commands for server and clients
 SERVER_COMMAND_SW = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SW)  &
-CLIENT_UPLOAD_COMMAND_SW = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(UPLOAD_FILE)' -n $(UPLOAD_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
-INVALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(INVALID_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
-VALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(UPLOAD_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
+CLIENT_UPLOAD_COMMAND_SW = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
+INVALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
+VALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
 
 
-
-SERVER_COMMAND_SACK = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SACK)  &
-CLIENT_UPLOAD_COMMAND_SACK = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(UPLOAD_FILE)' -n $(UPLOAD_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
-INVALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(INVALID_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
-VALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(UPLOAD_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
+<SERVER_COMMAND_SACK = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SACK)  &
+CLIENT_UPLOAD_COMMAND_SACK = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
+INVALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
+VALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
 
 # Use default file if FILE is not passed
 CLIENT_FILE = $(if $(FILE),$(FILE),$(UPLOAD_FILE))
 
-# Use default protocol if PROTOCOL is not passed
-PROTOCOL = $(if $(PROTOCOL),$(PROTOCOL),$(SW))
-
 # Makefile targets
-
-client_download_from_server_and_fail_sw:
-	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(INVALID_CLIENT_DOWNLOAD_COMMAND_SW)" $(LOSS) "$(DELAY)"
 
 upload_to_server_sw:
 	@echo "Starting the Mininet network with server and client commands..."
@@ -70,6 +62,9 @@ download_from_server_sack:
 
 remove_server_db:
 	rm -rf server-download-data/*
+
+remove_client_download_data:
+	rm -rf clients-download-data/*
 
 # Stop the Mininet network
 clean:
