@@ -1,6 +1,7 @@
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import MAX_PACKET_SIZE_SW
+from lib.errors.invalid_file_name import InvalidFileName
 import socket
 
 
@@ -102,6 +103,18 @@ class DownloadClient:
         self.__wait_for_ack()
         print("Start ack received")
 
+    def __file_name_acknowledged(self):
+        self.__get_packet()
+        file_name_acknowledged = True
+        while not self.__last_packet_received.fin and not self.__last_packet_sent_was_ack():
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
+
+        if self.__last_packet_received.fin:
+            self.__send_ack()
+            file_name_acknowledged = False
+        return file_name_acknowledged
+
     def __send_file_name_request(self):
         file_name_package = self.__create_new_packet(
             True,
@@ -114,20 +127,22 @@ class DownloadClient:
         self.__send_packet(file_name_package)
         print(f"File name request sent: {self.__config.FILE_NAME}")
 
-        self.__wait_for_ack()
-        print("File name ack received")
+        if self.__file_name_acknowledged():
+            print("File name ack received")
 
-        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+            file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
-        # Create an empty file or clear the existing file
-        with open(file_path, "wb") as _:
-            pass
+            # Create an empty file or clear the existing file
+            with open(file_path, "wb") as _:
+                pass
+        else:
+            raise InvalidFileName(f"File name: {self.__config.FILE_NAME} was not found by server")
 
     def __save_file_data(self, file_path):
         with open(file_path, "ab") as file:
             file.write(self.__last_packet_received.payload)
 
-    def __recieve_file_data(self):
+    def __receive_file_data(self):
         print("Receiving file data")
         file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
@@ -144,7 +159,13 @@ class DownloadClient:
     def run(self):
         print("Starting file download")
         self.__send_comm_start()
-        self.__send_file_name_request()
-        self.__recieve_file_data()
-        print(f"File received: {self.__config.FILE_NAME}")
+
+        try:
+            self.__send_file_name_request()
+            self.__receive_file_data()
+            print(f"File received: {self.__config.FILE_NAME}")
+        except InvalidFileName as e:
+            print("Failed with error:", e)
+            print("Closing communication")
+
         self.__skt.close()
