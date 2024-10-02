@@ -1,7 +1,7 @@
 import queue
 from collections import deque
 import time
-from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
+from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
@@ -46,6 +46,10 @@ class ClientHandlerSACK:
         """Check if the last packet received is in order."""
         if self.__last_ordered_packet_received is None:
             return True
+
+        # print(f"Last ordered: {self.__last_ordered_packet_received.seq_number}")
+        # print(f"Next expected: {self.__next_expected_seq_number()}")
+        # print(f"Last received: {self.__last_packet_received.seq_number}")
 
         return (
             self.__last_packet_received.seq_number == self.__next_expected_seq_number()
@@ -219,13 +223,16 @@ class ClientHandlerSACK:
 
     def __wait_for_data(self):
         """Wait for data from the client."""
-        self.__get_packet()
-
-        while not (self.__last_packet_received.upl and self.__last_packet_is_ordered()):
+        while True:
             print("Waiting for data")
+
+            self.__get_packet()
+
+            if self.__last_packet_received.upl and self.__last_packet_is_ordered():
+                break
+
             self.__add_out_of_order_packet()
             self.__send_sack()
-            self.__get_packet()
 
         # The last packet received is ordered
         self.__add_in_order_packet()
@@ -316,7 +323,10 @@ class ClientHandlerSACK:
         """Handle the client request."""
         try:
             self.__get_packet()
-            self.__last_ordered_packet_received = self.__last_packet_received
+            if self.__last_packet_is_ordered():
+                self.__add_in_order_packet()
+            else:
+                raise Exception("Invalid request")  # TODO: Handle this
 
             # Handle the initial SYN packet
             if self.__last_packet_received.syn:
@@ -326,7 +336,11 @@ class ClientHandlerSACK:
 
             # Get the file name
             self.__get_packet()
-            self.__last_ordered_packet_received = self.__last_packet_received
+            if self.__last_packet_is_ordered():
+                self.__add_in_order_packet()
+            else:
+                raise Exception("Invalid request")  # TODO: Handle this
+
             file_name: str = ""
 
             if self.__last_packet_received.upl or self.__last_packet_received.dwl:
@@ -336,6 +350,7 @@ class ClientHandlerSACK:
 
             # Handle the file data
             if self.__last_packet_received.upl:
+
                 self.__send_ack()
                 self.__handle_upl(file_name)
             elif self.__last_packet_received.dwl:

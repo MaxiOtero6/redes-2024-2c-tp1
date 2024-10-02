@@ -69,13 +69,13 @@ class UploadClientSACK:
 
         return (
             self.__last_packet_received.ack
-            and self.__start_of_next_seq(first_packet) == self.__last_packet_received.ack_number
+            and self.__start_of_next_seq(first_packet)
+            == self.__last_packet_received.ack_number
         )
 
     def __sack_received(self):
         return (
-            self.__last_packet_received.ack
-            and self.__last_packet_received.block_edges
+            self.__last_packet_received.ack and self.__last_packet_received.block_edges
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
@@ -179,8 +179,8 @@ class UploadClientSACK:
                 break
 
         # The first in order packet was acked
-        self.__unacked_packets.popleft()
-        self.__in_flight_bytes -= self.__last_packet_received.length()
+        packet, _ = self.__unacked_packets.popleft()
+        self.__in_flight_bytes -= packet.length()
 
     def __send_comm_start(self):
         start_package = self.__create_new_packet(
