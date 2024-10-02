@@ -69,8 +69,7 @@ class UploadClientSACK:
 
         return (
             self.__last_packet_received.ack
-            and self.__start_of_next_seq(first_packet)
-            == self.__last_packet_received.ack_number  # TODO: Ver el caso en el que el ACK sea mas grande y el caso en el que el ACK de toda la vuelta
+            and self.__start_of_next_seq(first_packet) == self.__last_packet_received.ack_number
         )
 
     def __sack_received(self):
@@ -84,11 +83,11 @@ class UploadClientSACK:
             self.__next_seq_number(),
             self.__last_recived_seq_number(),
             WINDOW_SIZE,
-            syn,
-            fin,
-            ack,
             upl,
             dwl,
+            ack,
+            syn,
+            fin,
             [],
             payload,
         )
@@ -104,7 +103,7 @@ class UploadClientSACK:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+        # self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
 
         try:
             data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
@@ -125,13 +124,19 @@ class UploadClientSACK:
             self.__resend_window()
             self.__get_packet()
 
-    def __send_packet(self, packet):
+    def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
         # self.__skt.settimeout(TIMEOUT)
         self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
+
+    def __sack_received(self):
+        return (
+            self.__last_packet_received.ack
+            and not self.__last_packet_received.block_edges
+        )
 
     def __handle_sack(self):
         """

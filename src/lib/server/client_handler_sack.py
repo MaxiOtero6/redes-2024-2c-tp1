@@ -7,6 +7,9 @@ from lib.packets.sack_packet import SACKPacket
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512
 
+# import debugpy
+# debugpy.debug_this_thread()
+
 
 class ClientHandlerSACK:
     def __init__(self, address, socket, folder_path):
@@ -132,11 +135,11 @@ class ClientHandlerSACK:
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
             RWND,
-            syn,
-            fin,
-            ack,
             upl,
             dwl,
+            ack,
+            syn,
+            fin,
             self.__received_blocks_edges,
             payload,
         )
@@ -144,7 +147,8 @@ class ClientHandlerSACK:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            data = self.data_queue.get(timeout=TIMEOUT)
+            # data = self.data_queue.get(timeout=TIMEOUT)
+            data = self.data_queue.get()
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -168,6 +172,7 @@ class ClientHandlerSACK:
 
     def __send_ack(self):
         """Send an acknowledgment to the client."""
+
         ack_packet = self.__create_new_packet(
             self.__last_ordered_packet_received.syn,
             self.__last_ordered_packet_received.fin,
@@ -176,6 +181,7 @@ class ClientHandlerSACK:
             self.__last_ordered_packet_received.dwl,
             b"",
         )
+
         self.__send_packet(ack_packet)
 
     def __send_sack(self):
@@ -310,6 +316,7 @@ class ClientHandlerSACK:
         """Handle the client request."""
         try:
             self.__get_packet()
+            self.__last_ordered_packet_received = self.__last_packet_received
 
             # Handle the initial SYN packet
             if self.__last_packet_received.syn:
@@ -319,6 +326,7 @@ class ClientHandlerSACK:
 
             # Get the file name
             self.__get_packet()
+            self.__last_ordered_packet_received = self.__last_packet_received
             file_name: str = ""
 
             if self.__last_packet_received.upl or self.__last_packet_received.dwl:
@@ -335,4 +343,7 @@ class ClientHandlerSACK:
                 self.__handle_dwl(file_name)
 
         except BrokenPipeError as e:
+            print(str(e))
+
+        except Exception as e:
             print(str(e))

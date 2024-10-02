@@ -122,3 +122,15 @@ class SACKPacket:
             seq_number, ack_number, rwnd,
             upl, dwl, ack, syn, fin, block_edges, payload
         )
+
+    def debug(self):
+        print(f"seq: {self.seq_number}")
+        print(f"ack: {self.ack_number}")
+        print(f"rwnd: {self.rwnd}")
+        print(f"upl: {self.upl}")
+        print(f"dwl: {self.dwl}")
+        print(f"ack: {self.ack}")
+        print(f"syn: {self.syn}")
+        print(f"fin: {self.fin}")
+        print(f"blocks: {self.block_edges}")
+        print(f"payload: {self.payload}")
