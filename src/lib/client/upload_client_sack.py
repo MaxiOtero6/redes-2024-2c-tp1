@@ -217,6 +217,7 @@ class UploadClientSACK:
         print("File name ack received")
 
     def __send_file_data(self):
+        """Send the file data to the server."""
         file_length = os.path.getsize(self.__config.SOURCE_PATH)
 
         with open(self.__config.SOURCE_PATH, "rb") as file:

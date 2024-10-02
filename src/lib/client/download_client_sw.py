@@ -8,7 +8,7 @@ from lib.arguments.constants import (
 import socket
 
 
-class DownloadClient:
+class DownloadClientSW:
     def __init__(self, config: DownloadConfig):
         self.__config = config
         self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -32,8 +32,7 @@ class DownloadClient:
     def __last_packet_is_new(self):
         """Check if the last packet received is new."""
         return (
-            self.__last_packet_received.seq_number
-            != self.__last_packet_sent.ack_number
+            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
         )
 
     def __last_packet_sent_was_ack(self):
@@ -106,9 +105,7 @@ class DownloadClient:
     def __wait_for_data(self):
         self.__get_packet()
 
-        while not (
-            self.__last_packet_received.dwl and self.__last_packet_is_new()
-        ):
+        while not (self.__last_packet_received.dwl and self.__last_packet_is_new()):
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
@@ -142,9 +139,7 @@ class DownloadClient:
         self.__wait_for_ack()
         print("File name ack received")
 
-        file_path = (
-            f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
-        )
+        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
         # Create an empty file or clear the existing file
         with open(file_path, "wb") as _:
@@ -156,9 +151,7 @@ class DownloadClient:
 
     def __recieve_file_data(self):
         print("Receiving file data")
-        file_path = (
-            f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
-        )
+        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
         while not self.__last_packet_received.fin:
             print(

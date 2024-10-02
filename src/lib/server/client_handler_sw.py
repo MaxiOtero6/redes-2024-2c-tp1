@@ -135,12 +135,12 @@ class ClientHandlerSW:
         """Send file data to the client."""
         with open(file_path, "rb") as file:
             data = file.read(MAX_PAYLOAD_SIZE)
-            first_packet = True
+            is_first_packet = True
             while len(data) > 0:
                 data_packet = self.__create_new_packet(
                     False,
                     False,
-                    first_packet,
+                    is_first_packet,
                     False,
                     True,
                     data,
@@ -152,7 +152,7 @@ class ClientHandlerSW:
                 time.sleep(0.1)
 
                 data = file.read(MAX_PAYLOAD_SIZE)
-                first_packet = False
+                is_first_packet = False
 
     def __recieve_file_data(self, file_path):
         # To create / overwrite the file

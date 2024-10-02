@@ -11,10 +11,10 @@ SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = 512 * 10
 
 
-class DownloadClient:
+class DownloadClientSACK:
     def __init__(self, config: DownloadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
@@ -50,6 +50,31 @@ class DownloadClient:
         return (
             self.__last_packet_received.seq_number == self.__next_expected_seq_number()
         )
+
+    # def __packet_was_acked(self, packet):
+    #     """Check if the packet was acked."""
+    #     ack_number = self.__last_packet_received.ack_number
+    #     end_of_packet = self.__start_of_next_seq(packet)
+
+    #     diference = abs(end_of_packet - ack_number)
+    #     if diference > SEQUENCE_NUMBER_LIMIT / 2:
+    #         ack_number += SEQUENCE_NUMBER_LIMIT
+
+    #     return end_of_packet <= ack_number
+
+    # def __new_ack_received(self):
+    #     """Check if the received packet acked the first unacked packet."""
+    #     if not self.__unacked_packets:
+    #         return False
+
+    #     first_packet = self.__unacked_packets[0][0]
+
+    #     return self.__packet_was_acked(first_packet)
+
+    # def __sack_received(self):
+    #     return (
+    #         self.__last_packet_received.ack and self.__last_packet_received.block_edges
+    #     )
 
     def __reorder_packets(self):
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
@@ -119,6 +144,10 @@ class DownloadClient:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+
+        print(self.__next_seq_number())
+        print(self.__end_of_last_ordered_packet())
+
         return SACKPacket(
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
@@ -135,7 +164,7 @@ class DownloadClient:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -196,33 +225,41 @@ class DownloadClient:
     #     self.__send_packet(fin_packet)
     #     self.__wait_for_ack()
 
-    def __wait_for_ack(self):
-        while True:
-            # TODO: follow a cumulative ack policy
-            self.__get_packet()
-
-            if self.__sack_received():
-                self.__handle_sack()
-
-            if self.__new_ack_received():
-                break
-
-        # At least one packet was acked, remove all acked packets from the unacked packets # noqa
-        while self.__unacked_packets:
-            packet, time = self.__unacked_packets.popleft()
-
-            if not self.__packet_was_acked(packet):
-                self.__unacked_packets.appendleft((packet, time))
-                break
-
-            self.__in_flight_bytes -= packet.length()
-
-    # def __wait_for_ack(self):  # TODO: Redo this
-    #     self.__get_packet()
-
-    #     while not self.__last_packet_sent_was_ack():
-    #         self.__send_packet(self.__last_packet_sent)
+    # def __wait_for_ack(self):
+    #     while True:
+    #         # TODO: follow a cumulative ack policy
     #         self.__get_packet()
+
+    #         if self.__sack_received():
+    #             self.__handle_sack()
+
+    #         if self.__new_ack_received():
+    #             break
+
+    #     # At least one packet was acked, remove all acked packets from the unacked packets # noqa
+    #     while self.__unacked_packets:
+    #         packet, time = self.__unacked_packets.popleft()
+
+    #         if not self.__packet_was_acked(packet):
+    #             self.__unacked_packets.appendleft((packet, time))
+    #             break
+
+    #         self.__in_flight_bytes -= packet.length()
+
+    def __last_packet_sent_was_ack(self):
+        """Check if the last packet sent was an acknowledgment."""
+        return (
+            self.__last_packet_received.ack
+            and self.__last_packet_sent.seq_number
+            == self.__last_packet_received.ack_number
+        )
+
+    def __wait_for_ack(self):  # TODO: Acomodar esto
+        self.__get_packet()
+
+        while not self.__last_packet_sent_was_ack():
+            self.__send_packet(self.__last_packet_sent)
+            self.__get_packet()
 
     def __wait_for_data(self):
         """Wait for data from the client."""
@@ -249,6 +286,7 @@ class DownloadClient:
             True,
             b"",
         )
+
         self.__send_packet(start_package)
         print("Download start packet sent")
 
@@ -310,9 +348,9 @@ class DownloadClient:
             self.__send_file_name_request()
             self.__recieve_file_data()
             print(f"File received: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
 
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()
