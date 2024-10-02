@@ -22,9 +22,13 @@ class MyTopo(Topo):
         switch = self.addSwitch('s1')
 
         # Add hosts
-        for i in range(1, self.num_hosts + 1):
+
+        server = self.addHost(f'h1')
+        self.addLink(server, switch, cls=TCLink, loss=10, delay='20ms')
+        
+        for i in range(2, self.num_hosts + 1):
             host = self.addHost(f'h{i}')
-            self.addLink(host, switch, cls=TCLink, loss=10)
+            self.addLink(host, switch, cls=TCLink)
 
 
 topos = {'mytopo': (lambda: MyTopo())}

@@ -8,11 +8,12 @@ from lib.server.client_handler_sw import ClientHandlerSW
 from lib.server.client_handler_sack import ClientHandlerSACK
 from lib.errors.unknown_algorithm import UnknownAlgorithm
 
+WORKERS = max(os.cpu_count(), 4)
 
 class Server:
     def __init__(self, config: ServerConfig):
         self.__config = config
-        self.__pool = ThreadPoolExecutor(max_workers=os.cpu_count())
+        self.__pool = ThreadPoolExecutor(max_workers=WORKERS)
         self.__skt: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__skt.bind((config.HOST, config.PORT))
         self.__clients_handlers = {}
@@ -43,7 +44,7 @@ class Server:
             data, address = self.__skt.recvfrom(
                 MAX_EXPECTED_PACKET_SIZE
             )
-
+            print(address)
             if address not in self.__clients_handlers:
                 client = self.__create_client(address)
                 self.__clients_handlers[address] = client
