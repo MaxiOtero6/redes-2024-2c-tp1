@@ -40,7 +40,7 @@ class UploadClientSACK:
             return 0
         return self.__start_of_next_seq(self.__last_packet_sent)
 
-    def __last_recived_seq_number(self):
+    def __last_received_seq_number(self):
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
@@ -86,7 +86,7 @@ class UploadClientSACK:
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SACKPacket(
             self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+            self.__last_received_seq_number(),
             WINDOW_SIZE,
             upl,
             dwl,

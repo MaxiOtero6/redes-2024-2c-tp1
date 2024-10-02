@@ -48,7 +48,7 @@ class ClientHandlerSACK:
             return 0
         return self.__start_of_next_seq(self.__last_packet_sent)
 
-    def __last_recived_seq_number(self):
+    def __last_received_seq_number(self):
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
