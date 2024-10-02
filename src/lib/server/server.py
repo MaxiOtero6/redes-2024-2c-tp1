@@ -34,11 +34,16 @@ class Server:
 
             case _:
                 raise UnknownAlgorithm(
-                    f"Unknown algorithm: {self.__config.ALGORITHM}")
+                    f"Unknown algorithm: {self.__config.ALGORITHM}"
+                )
 
     def __listener(self):
         """Listen for packets and route them to the correct client handler."""
-        MAX_EXPECTED_PACKET_SIZE = MAX_PACKET_SIZE_SW if self.__config.ALGORITHM == "sw" else MAX_PACKET_SIZE_SACK
+        MAX_EXPECTED_PACKET_SIZE = (
+            MAX_PACKET_SIZE_SW
+            if self.__config.ALGORITHM == "sw"
+            else MAX_PACKET_SIZE_SACK
+        )
 
         while True:
             data, address = self.__skt.recvfrom(

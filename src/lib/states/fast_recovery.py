@@ -19,4 +19,6 @@ class FastRecovery(State):
             self._cwnd += 1
             # transmit new packet
         else:
-            return CongestionAvoidance(self._ssthresh, self._ssthresh, ACKnumber)
+            return CongestionAvoidance(
+                self._ssthresh, self._ssthresh, ACKnumber
+            )

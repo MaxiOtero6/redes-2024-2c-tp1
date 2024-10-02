@@ -26,48 +26,48 @@ class ArgsParser:
 
     def __show_help_download(self) -> None:
         print(
-            """usage: download [-h] [-v | -q] [-H ADDR] [-p PORT] [-d FILEPATH] [-n FILENAME] [-a ALGORITHM]
-<command description>
-optional arguments:
-    -h, --help show this help message and exit
-    -v, --verbose increase output verbosity
-    -q, --quiet decrease output verbosity
-    -H, --host server IP address
-    -p, --port server port
-    -d, --dst destination file path
-    -n, --name file name
-    -a, --algorithm data transfer algorithm [sw | sack]"""
+            """usage: download [-h] [-v | -q] [-H ADDR] [-p PORT] [-d FILEPATH] [-n FILENAME] [-a ALGORITHM] # noqa
+<command description> # noqa
+optional arguments: # noqa
+    -h, --help show this help message and exit # noqa
+    -v, --verbose increase output verbosity # noqa
+    -q, --quiet decrease output verbosity # noqa
+    -H, --host server IP address # noqa
+    -p, --port server port # noqa
+    -d, --dst destination file path # noqa
+    -n, --name file name # noqa
+    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
         )
         exit()
 
     def __show_help_upload(self) -> None:
         print(
-            """usage: upload [-h] [-v | -q] [-H ADDR] [-p PORT] [-s FILEPATH] [-n FILENAME] [-a ALGORITHM]
-<command description>
-optional arguments:
-    -h, --help show this help message and exit
-    -v, --verbose increase output verbosity
-    -q, --quiet decrease output verbosity
-    -H, --host server IP address
-    -p, --port server port
-    -s, --src source file path
-    -n, --name file name
-    -a, --algorithm data transfer algorithm [sw | sack]"""
+            """usage: upload [-h] [-v | -q] [-H ADDR] [-p PORT] [-s FILEPATH] [-n FILENAME] [-a ALGORITHM] # noqa
+<command description> # noqa
+optional arguments: # noqa
+    -h, --help show this help message and exit # noqa
+    -v, --verbose increase output verbosity # noqa
+    -q, --quiet decrease output verbosity # noqa
+    -H, --host server IP address # noqa
+    -p, --port server port # noqa
+    -s, --src source file path # noqa
+    -n, --name file name # noqa
+    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
         )
         exit()
 
     def __show_help_server(self) -> None:
         print(
-            """usage: start-server [-h] [-v | -q] [-H ADDR] [-p PORT] [-s DIRPATH] [-a ALGORITHM]
-<command description>
-optional arguments:
-    -h, --help show this help message and exit
-    -v, --verbose increase output verbosity
-    -q, --quiet decrease output verbosity
-    -H, --host service IP address
-    -p, --port service port
-    -s, --storage storage dir path
-    -a, --algorithm data transfer algorithm [sw | sack]"""
+            """usage: start-server [-h] [-v | -q] [-H ADDR] [-p PORT] [-s DIRPATH] [-a ALGORITHM] # noqa
+<command description> # noqa
+optional arguments: # noqa
+    -h, --help show this help message and exit # noqa
+    -v, --verbose increase output verbosity # noqa
+    -q, --quiet decrease output verbosity # noqa
+    -H, --host service IP address # noqa
+    -p, --port service port # noqa
+    -s, --storage storage dir path # noqa
+    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
         )
         exit()
 
@@ -78,7 +78,7 @@ optional arguments:
 
         except IndexError:
             print(
-                "The host address must be specified after -H or --host, e.g: -H 127.0.0.15"
+                "The host address must be specified after -H or --host, e.g: -H 127.0.0.15"  # noqa
             )
             exit()
 
@@ -92,7 +92,9 @@ optional arguments:
             return self.validator.validate_port(argv[idx + 1])
 
         except IndexError:
-            print("The port number must be specified after -p or --port, e.g: -p 25565")
+            print(
+                "The port number must be specified after -p or --port, e.g: -p 25565"  # noqa
+            )
             exit()
 
         except Exception as e:
@@ -101,12 +103,14 @@ optional arguments:
 
     def __get_storage_dir(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(("-s", "--storage"), argv)
+            idx = self.__get_argv_index(
+                ("-s", "--storage"), argv
+            )
             return argv[idx + 1]
 
         except IndexError:
             print(
-                "The storage dir must be specified after -s or --storage, e.g: -s ~/storage"
+                "The storage dir must be specified after -s or --storage, e.g: -s ~/storage"  # noqa
             )
             exit()
 
@@ -115,12 +119,14 @@ optional arguments:
 
     def __get_source_path(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(("-s", "--src"), argv)
+            idx = self.__get_argv_index(
+                ("-s", "--src"), argv
+            )
             return argv[idx + 1]
 
         except IndexError:
             print(
-                "The source path must be specified after -s or --src, e.g: -s ~/Documents/file.txt"
+                "The source path must be specified after -s or --src, e.g: -s ~/Documents/file.txt"  # noqa
             )
             exit()
 
@@ -130,12 +136,14 @@ optional arguments:
 
     def __get_destination_path(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(("-d", "--dst"), argv)
+            idx = self.__get_argv_index(
+                ("-d", "--dst"), argv
+            )
             return argv[idx + 1]
 
         except IndexError:
             print(
-                "The destination path must be specified after -d or --dst, e.g: -d ~/Documents/file.txt"
+                "The destination path must be specified after -d or --dst, e.g: -d ~/Documents/file.txt"  # noqa
             )
             exit()
 
@@ -145,12 +153,14 @@ optional arguments:
 
     def __get_file_name(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(("-n", "--name"), argv)
+            idx = self.__get_argv_index(
+                ("-n", "--name"), argv
+            )
             return argv[idx + 1]
 
         except IndexError:
             print(
-                "The file name must be specified after -n or --name, e.g: -n file.txt"
+                "The file name must be specified after -n or --name, e.g: -n file.txt"  # noqa
             )
             exit()
 
@@ -160,11 +170,15 @@ optional arguments:
 
     def __get_algorithm(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(("-a", "--algorithm"), argv)
+            idx = self.__get_argv_index(
+                ("-a", "--algorithm"), argv
+            )
             return self.validator.validate_algorithm(argv[idx + 1])
 
         except IndexError:
-            print("The algorithm must be specified after -a or --algorithm, e.g: -a sw")
+            print(
+                "The algorithm must be specified after -a or --algorithm, e.g: -a sw" # noqa
+            )
             exit()
 
         except Exception as e:
@@ -233,7 +247,9 @@ optional arguments:
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
-        return UploadConfig([verbose, host, port, algorithm, source_path, file_name])
+        return UploadConfig(
+            [verbose, host, port, algorithm, source_path, file_name]
+        )
 
     def __load_download_client_args(self, argv: list[str]) -> DownloadConfig:
         if "-h" in argv or "--help" in argv:
@@ -279,7 +295,7 @@ optional arguments:
     def load_args(self, argv: list[str]) -> Config:
 
         binary = self.__get_binary(argv[0])
-    
+
         if binary == constants.DOWNLOAD_CLIENT:
             return self.__load_download_client_args(argv)
 

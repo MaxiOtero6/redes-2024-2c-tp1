@@ -22,7 +22,9 @@ class UploadClientSACK:
         self.__address = (self.__config.HOST, self.__config.PORT)
 
         # Sender
-        self.__unacked_packets = deque()  # list of unacked packets (packet, time)
+        self.__unacked_packets = (
+            deque()
+        )  # list of unacked packets (packet, time)
         self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
@@ -75,7 +77,8 @@ class UploadClientSACK:
 
     def __sack_received(self):
         return (
-            self.__last_packet_received.ack and self.__last_packet_received.block_edges
+            self.__last_packet_received.ack
+            and self.__last_packet_received.block_edges
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
@@ -111,14 +114,14 @@ class UploadClientSACK:
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
-        # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera
+        # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera # noqa
         except (socket.timeout, BlockingIOError):
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
-                    "Max timeouts reached, is client alive?. Closing connection"
+                    "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
 
             self.__resend_window()
@@ -131,17 +134,11 @@ class UploadClientSACK:
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
-    def __sack_received(self):
-        return (
-            self.__last_packet_received.ack
-            and not self.__last_packet_received.block_edges
-        )
-
     def __handle_sack(self):
         """
-        Handle the case when an out of order ack is received.
-        If it has a block edge, check if there is an unacked packet waiting for that block edge,
-        if so, remove it from the unacked packets.
+        Handle the case when an out of order ack is received. # noqa
+        If it has a block edge, check if there is an unacked packet waiting for that block edge, # noqa
+        if so, remove it from the unacked packets. # noqa
         """
 
         # Use an stack to store the queue order
@@ -156,7 +153,7 @@ class UploadClientSACK:
                     unacked_packets.append((packet, time))
 
                 elif self.__start_of_next_seq(packet) > end:
-                    # packet not in this block edge, add it back and try the next one
+                    # packet not in this block edge, add it back and try the next one # noqa
                     self.__unacked_packets.appendleft((packet, time))
                     break
 
@@ -272,5 +269,5 @@ class UploadClientSACK:
 
 def print_sent_progress(data_sent, file_length):
     print(
-        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
+        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}" # noqa
     )

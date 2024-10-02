@@ -1,7 +1,11 @@
 import queue
 from collections import deque
-import time
-from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
+
+from lib.arguments.constants import (
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
@@ -47,18 +51,21 @@ class ClientHandlerSACK:
         if self.__last_ordered_packet_received is None:
             return True
 
-        # print(f"Last ordered: {self.__last_ordered_packet_received.seq_number}")
-        # print(f"Next expected: {self.__next_expected_seq_number()}")
-        # print(f"Last received: {self.__last_packet_received.seq_number}")
+        # print(f"Last ordered: {self.__last_ordered_packet_received.seq_number}") # noqa
+        # print(f"Next expected: {self.__next_expected_seq_number()}") # noqa
+        # print(f"Last received: {self.__last_packet_received.seq_number}") # noqa
 
         return (
-            self.__last_packet_received.seq_number == self.__next_expected_seq_number()
+            self.__last_packet_received.seq_number
+            == self.__next_expected_seq_number()
         )
 
     def __reorder_packets(self):
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
-            self.__last_ordered_packet_received = self.__out_of_order_packets.pop(
-                self.__next_expected_seq_number()
+            self.__last_ordered_packet_received = (
+                self.__out_of_order_packets.pop(
+                    self.__next_expected_seq_number()
+                )
             )
             self.__in_order_packets.append(self.__last_ordered_packet_received)
 
@@ -87,7 +94,9 @@ class ClientHandlerSACK:
         start = self.__last_packet_received.seq_number
         end = start + len(self.__last_packet_received.payload)
 
-        self.__out_of_order_packets[start] = self.__last_ordered_packet_received
+        self.__out_of_order_packets[start] = (
+            self.__last_ordered_packet_received
+        )
 
         for block_index in range(len(self.__received_blocks_edges)):
             block_start, block_end = self.__received_blocks_edges[block_index]
@@ -100,7 +109,9 @@ class ClientHandlerSACK:
                 self.__received_blocks_edges[block_index] = (block_start, end)
 
                 if block_index + 1 < len(self.__received_blocks_edges):
-                    next_block_start, _ = self.__received_blocks_edges[block_index + 1]
+                    next_block_start, _ = self.__received_blocks_edges[
+                        block_index + 1
+                    ]
                     if next_block_start == end:
                         _, next_block_end = self.__received_blocks_edges[
                             block_index + 1
@@ -162,7 +173,7 @@ class ClientHandlerSACK:
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
-                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"
+                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
@@ -227,7 +238,10 @@ class ClientHandlerSACK:
 
             self.__get_packet()
 
-            if self.__last_packet_received.upl and self.__last_packet_is_ordered():
+            if (
+                self.__last_packet_received.upl
+                and self.__last_packet_is_ordered()
+            ):
                 break
 
             self.__add_out_of_order_packet()
@@ -341,7 +355,10 @@ class ClientHandlerSACK:
 
             file_name: str = ""
 
-            if self.__last_packet_received.upl or self.__last_packet_received.dwl:
+            if (
+                self.__last_packet_received.upl
+                or self.__last_packet_received.dwl
+            ):
                 file_name = self.__handle_file_name()
             else:
                 raise Exception("Invalid request")
