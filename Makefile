@@ -38,36 +38,35 @@ CLIENT_UPLOAD_COMMAND_SACK = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLI
 INVALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(INVALID_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
 VALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(UPLOAD_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
 
+# Use default file if FILE is not passed
+CLIENT_FILE = $(if $(FILE),$(FILE),$(UPLOAD_FILE))
 
+# Use default protocol if PROTOCOL is not passed
+PROTOCOL = $(if $(PROTOCOL),$(PROTOCOL),$(SW))
 
 # Makefile targets
 
-one_client_download_to_server_and_fail_sw:
+client_download_from_server_and_fail_sw:
 	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(INVALID_CLIENT_DOWNLOAD_COMMAND_SW)"
+	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(INVALID_CLIENT_DOWNLOAD_COMMAND_SW)" $(LOSS) "$(DELAY)"
 
-one_client_upload_to_server_sw:
+upload_to_server_sw:
 	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(CLIENT_UPLOAD_COMMAND_SW)"
+	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(CLIENT_UPLOAD_COMMAND_SW)" $(LOSS) "$(DELAY)"
 
-one_client_upload_to_server_sack:
+upload_to_server_sack:
 	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) 2 "$(SERVER_COMMAND_SACK)" "$(CLIENT_UPLOAD_COMMAND_SACK)"
+	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SACK)" "$(CLIENT_UPLOAD_COMMAND_SACK)" $(LOSS) "$(DELAY)"
 
 
-
-two_clients_upload_to_server_sw:
+download_from_server_sw:
 	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) 3 "$(SERVER_COMMAND_SW)" "$(CLIENT_UPLOAD_COMMAND_SW)"
+	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SW)" "$(VALID_CLIENT_DOWNLOAD_COMMAND_SW)" $(LOSS) "$(DELAY)"
 
-one_client_download_from_server_sw:
-	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) 2 "$(SERVER_COMMAND_SW)" "$(VALID_CLIENT_DOWNLOAD_COMMAND_SW)"
-	open $()
 
-two_clients_download_from_server_sw:
+download_from_server_sack:
 	@echo "Starting the Mininet network with server and client commands..."
-	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) 3 "$(SERVER_COMMAND_SW)" "$(VALID_CLIENT_DOWNLOAD_COMMAND_SW)"
+	@sudo $(MININET_PYTHON) $(TOPOLOGY_SCRIPT) $(NUM_HOST) "$(SERVER_COMMAND_SACK)" "$(VALID_CLIENT_DOWNLOAD_COMMAND_SACK)" $(LOSS) "$(DELAY)"
 
 remove_server_db:
 	rm -rf server-download-data/*

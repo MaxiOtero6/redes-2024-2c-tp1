@@ -10,8 +10,10 @@ import time
 class MyTopo(Topo):
     "Simple topology example with a variable number of clients."
 
-    def __init__(self, num_hosts=2):
+    def __init__(self, num_hosts=2, loss=10, delay='20ms'):
         self.num_hosts = num_hosts
+        self.loss = loss
+        self.delay = delay
         Topo.__init__(self)
         self.build()
 
@@ -22,10 +24,9 @@ class MyTopo(Topo):
         switch = self.addSwitch('s1')
 
         # Add hosts
-
         server = self.addHost(f'h1')
-        self.addLink(server, switch, cls=TCLink, loss=10, delay='20ms')
-        
+        self.addLink(server, switch, cls=TCLink, loss=self.loss, delay=self.delay)
+
         for i in range(2, self.num_hosts + 1):
             host = self.addHost(f'h{i}')
             self.addLink(host, switch, cls=TCLink)
@@ -34,8 +35,8 @@ class MyTopo(Topo):
 topos = {'mytopo': (lambda: MyTopo())}
 
 
-def start_server_and_clients(num_hosts, server_command, client_command):
-    net = Mininet(topo=MyTopo(num_hosts=num_hosts), link=TCLink)
+def start_server_and_clients(num_hosts, server_command, client_command, loss, delay):
+    net = Mininet(topo=MyTopo(num_hosts=num_hosts, loss=loss, delay=delay), link=TCLink)
 
     # Start the network
     net.start()
@@ -60,7 +61,6 @@ def start_server_and_clients(num_hosts, server_command, client_command):
     net.stop()
 
 
-
 if __name__ == '__main__':
     if __name__ == '__main__':
         setLogLevel('info')
@@ -73,5 +73,7 @@ if __name__ == '__main__':
     num_hosts = int(sys.argv[1])
     server_command = sys.argv[2]
     client_command = sys.argv[3]
+    loss = sys.argv[4]
+    delay = sys.argv[5]
 
-    start_server_and_clients(num_hosts, server_command, client_command)
+    start_server_and_clients(num_hosts, server_command, client_command, loss, delay)
