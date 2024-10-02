@@ -75,7 +75,7 @@ class UploadClientSACK:
     def __sack_received(self):
         return (
             self.__last_packet_received.ack
-            and not self.__last_packet_received.block_edges
+            and self.__last_packet_received.block_edges
         )
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
