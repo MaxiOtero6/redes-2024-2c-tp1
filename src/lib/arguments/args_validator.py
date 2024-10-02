@@ -1,6 +1,5 @@
 import ipaddress
 from ..errors.port_out_of_bounds import PortOutOfBounds
-from os.path import isdir, isfile
 
 
 class ArgsValidator:

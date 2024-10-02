@@ -29,7 +29,9 @@ class SlowStart(State):
             return
 
         if self._ssthresh and self._cwnd >= self._ssthresh:
-            return CongestionAvoidance(self._cwnd, self._ssthresh, self._lastACKnumber)
+            return CongestionAvoidance(
+                self._cwnd, self._ssthresh, self._lastACKnumber
+            )
 
         self._cwnd += MSS
         self._dupACKcount = 0

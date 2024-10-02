@@ -1,6 +1,10 @@
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
-from lib.arguments.constants import MAX_PACKET_SIZE_SW, MAX_TIMEOUT_PER_PACKET, TIMEOUT
+from lib.arguments.constants import (
+    MAX_PACKET_SIZE_SW,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 import socket
 
 
@@ -28,7 +32,8 @@ class DownloadClient:
     def __last_packet_is_new(self):
         """Check if the last packet received is new."""
         return (
-            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
+            self.__last_packet_received.seq_number
+            != self.__last_packet_sent.ack_number
         )
 
     def __last_packet_sent_was_ack(self):
@@ -67,7 +72,7 @@ class DownloadClient:
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
-                    "Max timeouts reached, is client alive?. Closing connection"
+                    "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
@@ -101,7 +106,9 @@ class DownloadClient:
     def __wait_for_data(self):
         self.__get_packet()
 
-        while not (self.__last_packet_received.dwl and self.__last_packet_is_new()):
+        while not (
+            self.__last_packet_received.dwl and self.__last_packet_is_new()
+        ):
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
@@ -135,7 +142,9 @@ class DownloadClient:
         self.__wait_for_ack()
         print("File name ack received")
 
-        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+        file_path = (
+            f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+        )
 
         # Create an empty file or clear the existing file
         with open(file_path, "wb") as _:
@@ -147,11 +156,13 @@ class DownloadClient:
 
     def __recieve_file_data(self):
         print("Receiving file data")
-        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+        file_path = (
+            f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+        )
 
         while not self.__last_packet_received.fin:
             print(
-                f"Received packet of size {len(self.__last_packet_received.payload)}"
+                f"Received packet of size {len(self.__last_packet_received.payload)}"  # noqa
             )
 
             self.__save_file_data(file_path)

@@ -17,10 +17,19 @@ class SACKPacketTest(unittest.TestCase):
         expected_payload: bytes = b"\xFF"
 
         data: bytes = (
-            b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x00\x00"
-            + b"\x01" + b"\x00" + b"\x01" + b"\x00" + b"\x01" + b"\x02"
-            + b"\x00\x00\x00\x01\x00\x00\x00\x00" +
-            b"\x00\x00\x00\x00\x00\x00\x00\x01" + b"\xFF")
+            b"\x00\x00\x00\x00"
+            + b"\x00\x00\x00\x00"
+            + b"\x00\x00"
+            + b"\x01"
+            + b"\x00"
+            + b"\x01"
+            + b"\x00"
+            + b"\x01"
+            + b"\x02"
+            + b"\x00\x00\x00\x01\x00\x00\x00\x00"
+            + b"\x00\x00\x00\x00\x00\x00\x00\x01"
+            + b"\xFF"
+        )
 
         res: SACKPacket = SACKPacket.decode(data)
 
@@ -49,14 +58,31 @@ class SACKPacketTest(unittest.TestCase):
         payload: bytes = b"\xFF"
 
         packet: SACKPacket = SACKPacket(
-            seq_number, ack_number, rwnd, upl, dwl, ack, syn, fin, block_edges, payload
+            seq_number,
+            ack_number,
+            rwnd,
+            upl,
+            dwl,
+            ack,
+            syn,
+            fin,
+            block_edges,
+            payload,
         )
 
         expected_bytes: bytes = (
-            b"\x00\x00\x00\x00" + b"\x00\x00\x00\x00" + b"\x00\x00"
-            + b"\x01" + b"\x00" + b"\x01" + b"\x00" + b"\x01" + b"\x02"
-            + b"\x00\x00\x00\x01\x00\x00\x00\x00" +
-            b"\x00\x00\x00\x00\x00\x00\x00\x01" + b"\xFF"
+            b"\x00\x00\x00\x00"
+            + b"\x00\x00\x00\x00"
+            + b"\x00\x00"
+            + b"\x01"
+            + b"\x00"
+            + b"\x01"
+            + b"\x00"
+            + b"\x01"
+            + b"\x02"
+            + b"\x00\x00\x00\x01\x00\x00\x00\x00"
+            + b"\x00\x00\x00\x00\x00\x00\x00\x01"
+            + b"\xFF"
         )
 
         res: bytes = packet.encode()

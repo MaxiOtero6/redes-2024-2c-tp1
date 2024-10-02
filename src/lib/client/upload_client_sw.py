@@ -1,5 +1,4 @@
 import os
-import time
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
@@ -68,7 +67,7 @@ class UploadClientSW:
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
-                    "Max timeouts reached, is client alive?. Closing connection"
+                    "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
@@ -135,7 +134,7 @@ class UploadClientSW:
                 self.__send_packet(packet)
                 data_sent += len(data)
                 print(
-                    f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"
+                    f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"  # noqa
                 )
                 self.__wait_for_ack()
                 print("Ack received for packet")

@@ -1,6 +1,10 @@
 import queue
 import time
-from lib.arguments.constants import MAX_PAYLOAD_SIZE, MAX_TIMEOUT_PER_PACKET, TIMEOUT
+from lib.arguments.constants import (
+    MAX_PAYLOAD_SIZE,
+    MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
+)
 from lib.packets.sw_packet import SWPacket
 
 
@@ -29,7 +33,8 @@ class ClientHandlerSW:
     def __last_packet_is_new(self):
         """Check if the last packet received is new."""
         return (
-            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
+            self.__last_packet_received.seq_number
+            != self.__last_packet_sent.ack_number
         )
 
     def __last_packet_sent_was_ack(self):
@@ -66,7 +71,7 @@ class ClientHandlerSW:
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
-                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"
+                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
@@ -101,7 +106,9 @@ class ClientHandlerSW:
         """Wait for data from the client."""
         self.__get_packet()
 
-        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
+        while not (
+            self.__last_packet_received.upl and self.__last_packet_is_new()
+        ):
             print("Waiting for data")
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
@@ -217,7 +224,10 @@ class ClientHandlerSW:
             self.__get_packet()
             file_name: str = ""
 
-            if self.__last_packet_received.upl or self.__last_packet_received.dwl:
+            if (
+                self.__last_packet_received.upl
+                or self.__last_packet_received.dwl
+            ):
                 file_name = self.__handle_file_name()
             else:
                 raise Exception("Invalid request")
