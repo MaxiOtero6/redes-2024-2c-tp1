@@ -6,6 +6,9 @@ PYTHON = python3.11
 HOST = 10.0.0.1
 PORT = 5001
 
+#Time
+TIME = time
+
 #Protocol configuration
 SW = 'sw'
 SACK = 'sack'
@@ -27,14 +30,12 @@ INVALID_FILE = invalid-file.jpg
 
 # Commands for server and clients
 SERVER_COMMAND_SW = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SW)  &
-CLIENT_UPLOAD_COMMAND_SW = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
-INVALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
+CLIENT_UPLOAD_COMMAND_SW = xterm -hold -e time $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
 VALID_CLIENT_DOWNLOAD_COMMAND_SW = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SW) &
 
 
-<SERVER_COMMAND_SACK = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SACK)  &
-CLIENT_UPLOAD_COMMAND_SACK = xterm -hold -e $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
-INVALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
+SERVER_COMMAND_SACK = xterm -e $(PYTHON) $(SERVER_SCRIPT) -H $(HOST) -p $(PORT) -s $(SERVER_DATA_DIR) -a $(SACK)  &
+CLIENT_UPLOAD_COMMAND_SACK = xterm -hold -e time $(PYTHON) $(UPLOAD_SCRIPT) -s '$(CLIENT_UPLOAD_DIR)/$(CLIENT_FILE)' -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
 VALID_CLIENT_DOWNLOAD_COMMAND_SACK = xterm -e $(PYTHON) $(DOWNLOAD_SCRIPT) -d $(CLIENT_DOWNLOAD_DIR) -n $(CLIENT_FILE) -H $(HOST) -p $(PORT) -a $(SACK) &
 
 # Use default file if FILE is not passed

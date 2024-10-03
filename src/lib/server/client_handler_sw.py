@@ -149,7 +149,7 @@ class ClientHandlerSW:
                 self.__wait_for_ack()
 
                 # sleep for a second
-                time.sleep(0.1)
+                #time.sleep(0.1)
 
                 data = file.read(MAX_PAYLOAD_SIZE)
                 first_packet = False
