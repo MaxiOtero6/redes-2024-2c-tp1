@@ -1,6 +1,8 @@
 from abc import abstractmethod
 
-MSS = 512  # Packet payload bytes
+from lib.arguments.constants import MAX_PAYLOAD_SIZE
+
+MSS = MAX_PAYLOAD_SIZE  # Packet payload bytes
 
 
 class State:

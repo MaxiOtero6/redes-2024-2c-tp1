@@ -13,7 +13,7 @@ from lib.arguments.constants import (
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-WINDOW_SIZE = 512 * 10
+WINDOW_SIZE = MAX_PAYLOAD_SIZE * 10
 
 
 class UploadClientSACK:
@@ -137,8 +137,7 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.8:
-            self.__skt.sendto(packet.encode(), self.__address)
+        self.__skt.sendto(packet.encode(), self.__address)
 
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()

@@ -4,13 +4,14 @@ from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
+    MAX_PAYLOAD_SIZE,
     MAX_TIMEOUT_PER_PACKET,
     TIMEOUT,
 )
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-RWND = 512 * 10
+RWND = MAX_PAYLOAD_SIZE * 10
 
 
 class DownloadClientSACK:
@@ -187,10 +188,7 @@ class DownloadClientSACK:
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
         self.__socket.settimeout(0)
-        if random.random() < 0.8:
-            self.__socket.sendto(packet.encode(), self.__address)
-        else:
-            print("Loss")
+        self.__socket.sendto(packet.encode(), self.__address)
 
         self.__last_packet_created = packet
 

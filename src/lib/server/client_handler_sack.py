@@ -12,7 +12,7 @@ from lib.arguments.constants import (
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-RWND = 512 * 10
+RWND = MAX_PAYLOAD_SIZE * 10
 
 # debugpy.debug_this_thread()
 
@@ -242,10 +242,7 @@ class ClientHandlerSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.8:
-            self.__socket.sendto(packet.encode(), self.address)
-        else:
-            print("Loss")
+        self.__socket.sendto(packet.encode(), self.address)
 
         # TODO: Maybe generalize this
         if self.__last_packet_received.dwl:
