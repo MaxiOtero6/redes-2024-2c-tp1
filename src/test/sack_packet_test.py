@@ -89,7 +89,7 @@ class SACKPacketTest(unittest.TestCase):
         res: bytes = packet.encode()
 
         self.assertEqual(expected_bytes, res)
-        
+
     def test_max_seq(self):
 
         # ack_number = self.__last_packet_received.ack_number

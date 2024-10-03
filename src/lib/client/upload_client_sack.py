@@ -281,7 +281,9 @@ class UploadClientSACK:
             self.__socket.close()
         except FileNotFoundError as e:
             print("Error: ", e)
-            print("File not found or path is incorrect, please check the path and try again")
+            print(
+                "File not found or path is incorrect, please check the path and try again"
+            )
             print("Closing connection")
             self.__socket.close()
         except BrokenPipeError as e:

@@ -78,6 +78,4 @@ class SWPacket:
 
         payload: bytes = data[idx_after_padding::]
 
-        return SWPacket(
-            seq_number, ack_number, syn, fin, ack, upl, dwl, payload
-        )
+        return SWPacket(seq_number, ack_number, syn, fin, ack, upl, dwl, payload)

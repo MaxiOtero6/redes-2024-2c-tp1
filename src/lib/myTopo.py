@@ -13,7 +13,7 @@ class MyTopo(Topo):
     def __init__(self, num_hosts=2, loss=10, delay=20):
         self.num_hosts = num_hosts
         self.loss = loss
-        self.delay = str(delay) + 'ms'
+        self.delay = str(delay) + "ms"
         Topo.__init__(self)
         self.build()
 
@@ -21,18 +21,18 @@ class MyTopo(Topo):
         "Create custom topo."
 
         # Add switch
-        switch = self.addSwitch('s1')
+        switch = self.addSwitch("s1")
 
         # Add hosts
-        server = self.addHost(f'h1')
+        server = self.addHost(f"h1")
         self.addLink(server, switch, cls=TCLink, loss=self.loss, delay=self.delay)
 
         for i in range(2, self.num_hosts + 1):
-            host = self.addHost(f'h{i}')
+            host = self.addHost(f"h{i}")
             self.addLink(host, switch)
 
 
-topos = {'mytopo': (lambda: MyTopo())}
+topos = {"mytopo": (lambda: MyTopo())}
 
 
 def start_server_and_clients(num_hosts, server_command, client_command, loss, delay):
@@ -44,7 +44,7 @@ def start_server_and_clients(num_hosts, server_command, client_command, loss, de
     print(f"Network started with {num_hosts} hosts.")
 
     # Start the server on host h1
-    server_host = net.get('h1')
+    server_host = net.get("h1")
     print(f"Starting server on {server_host.name}...")
     server_output = server_host.cmd(server_command)
 
@@ -52,7 +52,7 @@ def start_server_and_clients(num_hosts, server_command, client_command, loss, de
 
     # Start clients on other hosts
     for i in range(2, num_hosts + 1):
-        client_host = net.get(f'h{i}')
+        client_host = net.get(f"h{i}")
         client_output = client_host.cmd(client_command)
         print(client_output)
 
@@ -61,13 +61,15 @@ def start_server_and_clients(num_hosts, server_command, client_command, loss, de
     net.stop()
 
 
-if __name__ == '__main__':
-    if __name__ == '__main__':
-        setLogLevel('info')
+if __name__ == "__main__":
+    if __name__ == "__main__":
+        setLogLevel("info")
 
     # Example: Pass server and client commands via command line
     if len(sys.argv) < 4:
-        print("Usage: python3 topology.py <num_hosts> <server_command> <client_command>")
+        print(
+            "Usage: python3 topology.py <num_hosts> <server_command> <client_command>"
+        )
         sys.exit(1)
 
     num_hosts = int(sys.argv[1])
