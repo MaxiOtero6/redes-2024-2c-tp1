@@ -29,7 +29,7 @@ class MyTopo(Topo):
 
         for i in range(2, self.num_hosts + 1):
             host = self.addHost(f'h{i}')
-            self.addLink(host, switch, cls=TCLink)
+            self.addLink(host, switch)
 
 
 topos = {'mytopo': (lambda: MyTopo())}

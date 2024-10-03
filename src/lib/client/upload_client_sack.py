@@ -1,6 +1,5 @@
 import os
 from collections import deque
-import random
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.client.upload_config import UploadConfig
