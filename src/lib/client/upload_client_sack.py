@@ -1,5 +1,6 @@
 import os
 from collections import deque
+import random
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.client.upload_config import UploadConfig
@@ -12,13 +13,13 @@ from lib.arguments.constants import (
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-WINDOW_SIZE = MAX_PAYLOAD_SIZE * 10
+WINDOW_SIZE = MAX_PAYLOAD_SIZE * 2
 
 
 class UploadClientSACK:
     def __init__(self, config: UploadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
 
         # Sender
@@ -110,16 +111,15 @@ class UploadClientSACK:
         size: int = len(self.__unacked_packets)
         for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
-            print(f"Resending packet {packet.seq_number}")
             self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+        self.__socket.settimeout(self.__time_to_first_unacked_packed_timeout())
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -139,8 +139,8 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__skt.sendto(packet.encode(), self.__address)
-
+        if random.random() < 0.1:
+            self.__socket.sendto(packet.encode(), self.__address)
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
@@ -279,11 +279,11 @@ class UploadClientSACK:
             self.__send_file_data()
             self.__send_comm_fin()
             print(f"File sent: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
 
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()
 
 

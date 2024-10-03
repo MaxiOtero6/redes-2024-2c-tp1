@@ -12,7 +12,7 @@ from lib.arguments.constants import (
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-RWND = MAX_PAYLOAD_SIZE * 10
+RWND = MAX_PAYLOAD_SIZE * 2
 
 # debugpy.debug_this_thread()
 
@@ -178,8 +178,11 @@ class ClientHandlerSACK:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
-        ack_num = self.__last_received_seq_number(
-        ) if (dwl and not syn) else self.__end_of_last_ordered_packet()
+        ack_num = (
+            self.__last_received_seq_number()
+            if (dwl and not syn)
+            else self.__end_of_last_ordered_packet()
+        )  # TODO: Check if this is correct
 
         packet = SACKPacket(
             self.__next_seq_number(),
@@ -208,7 +211,7 @@ class ClientHandlerSACK:
 
             self.__send_packet(packet)
 
-    def __get_packet(self):  # TODO: Differs senders and receivers
+    def __get_packet(self):
         """Get the next packet from the queue."""
 
         timeout: float
@@ -220,9 +223,7 @@ class ClientHandlerSACK:
         try:
             data = self.data_queue.get(timeout=timeout)
             packet = SACKPacket.decode(data)
-
             self.__last_packet_received = packet
-
             self.__timeout_count = 0
 
         except (queue.Empty, Exception):
@@ -234,8 +235,6 @@ class ClientHandlerSACK:
                     f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
 
-            # TODO: Maybe generalize this
-
             if self.__last_packet_received is None or self.__last_packet_received.upl:
                 self.__send_packet(self.__last_packet_created)
             elif self.__last_packet_received.dwl:
@@ -245,9 +244,9 @@ class ClientHandlerSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__socket.sendto(packet.encode(), self.address)
+        if random.random() < 0.1:
+            self.__socket.sendto(packet.encode(), self.address)
 
-        # TODO: Maybe generalize this
         if self.__last_packet_received.dwl:
             self.__unacked_packets.append((packet, time.time()))
             self.__in_flight_bytes += packet.length()
@@ -276,9 +275,7 @@ class ClientHandlerSACK:
                     self.__unacked_packets.appendleft((packet, time))
                     break
 
-                # else:
-
-                    # packet was acked, no need to resend
+                # packet was acked, no need to resend
                 self.__in_flight_bytes -= packet.length()
 
         while unacked_packets:
@@ -293,8 +290,11 @@ class ClientHandlerSACK:
                 self.__handle_sack()
 
             if self.__new_ack_received():
-                # TODO: check
                 break
+
+            else:
+                pass
+                # TODO: Repeated ACK
 
         # At least one packet was acked, remove all acked packets from the unacked packets # noqa
         while self.__unacked_packets:
@@ -378,8 +378,6 @@ class ClientHandlerSACK:
             data = file.read(MAX_PAYLOAD_SIZE)
             is_first_packet = True
             while len(data) > 0 or len(self.__unacked_packets) > 0:
-                print(f"pre cond IN FLIGHT: {self.__in_flight_bytes} < {RWND}")
-                print("COND: ", len(data) > 0 and self.__in_flight_bytes < RWND)
                 while (
                     len(data) > 0 and self.__in_flight_bytes < RWND
                 ):  # TODO: prevent to send more than the window size
@@ -399,11 +397,6 @@ class ClientHandlerSACK:
 
                     data = file.read(MAX_PAYLOAD_SIZE)
                     is_first_packet = False
-                    print(
-                        f"IN FLIGHT: {self.__in_flight_bytes} < {RWND}", end="\n\n")
-
-                if (self.__in_flight_bytes > RWND):
-                    print("pepe")
 
                 self.__wait_for_ack()
                 print("Ack received for packet")
@@ -412,8 +405,6 @@ class ClientHandlerSACK:
         # To create / overwrite the file
         with open(file_path, "wb") as _:
             pass
-
-        self.__in_order_packets.clear()  # TODO: prolijo
 
         self.__wait_for_data()
 
@@ -435,6 +426,7 @@ class ClientHandlerSACK:
             b"",
         )
 
+        self.__in_order_packets.popleft()  # TODO: Check if this is correct
         self.__send_packet(syn_ack_packet)
 
     def __handle_upl(self, file_name):
@@ -459,44 +451,49 @@ class ClientHandlerSACK:
 
     def __handle_file_name(self):
         """Receive and handle the file name."""
-        file_name = self.__last_packet_received.payload.decode()
+        # file_name = self.__last_packet_received.payload.decode()
+        file_name = self.__in_order_packets.popleft().payload.decode()
         return file_name
+
+    def __wait_for_file_name(self):
+        """Wait for the file name from the client."""
+        while True:
+            self.__get_packet()
+            if self.__last_packet_is_ordered() and (
+                self.__last_packet_received.upl or self.__last_packet_received.dwl
+            ):
+                self.__add_in_order_packet()
+                file_name = self.__handle_file_name()
+                if self.__last_ordered_packet_received.upl:
+                    self.__send_ack()
+
+                return file_name
+            else:
+                pass
+                # TODO: Should sum a timeout here
+
+    def __wait_for_syn(self):
+        """Wait for the initial SYN packet."""
+        while True:
+            self.__get_packet()
+            if self.__last_packet_is_ordered() and self.__last_packet_received.syn:
+                self.__add_in_order_packet()
+                self.__handle_syn()
+                break
+            else:
+                # TODO: Should sum a timeout here
+                pass
 
     def handle_request(self):
         """Handle the client request."""
         try:
-            self.__get_packet()
-            if self.__last_packet_is_ordered():
-                self.__add_in_order_packet()
-            else:
-                raise Exception("Invalid request 1")  # TODO: Handle this
-
-            # Handle the initial SYN packet
-            if self.__last_packet_received.syn:
-                self.__handle_syn()
-            else:
-                raise Exception("Invalid request 2")
-
-            # Get the file name
-            self.__get_packet()
-            if self.__last_packet_is_ordered():
-                self.__add_in_order_packet()
-            else:
-                raise Exception("Invalid request 3")  # TODO: Handle this
-
-            file_name: str = ""
-
-            if self.__last_packet_received.upl or self.__last_packet_received.dwl:
-                file_name = self.__handle_file_name()
-            else:
-                raise Exception("Invalid request 4")
+            self.__wait_for_syn()
+            file_name = self.__wait_for_file_name()
 
             # Handle the file data
-            if self.__last_packet_received.upl:
-                self.__send_ack()
+            if self.__last_ordered_packet_received.upl:
                 self.__handle_upl(file_name)
-            elif self.__last_packet_received.dwl:
-                # Automatically start the download process
+            elif self.__last_ordered_packet_received.dwl:
                 self.__handle_dwl(file_name)
 
         except BrokenPipeError as e:

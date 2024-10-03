@@ -1,3 +1,4 @@
+import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
@@ -11,7 +12,7 @@ import socket
 class DownloadClientSW:
     def __init__(self, config: DownloadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
@@ -57,17 +58,17 @@ class DownloadClientSW:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(TIMEOUT)
+        self.__socket.settimeout(TIMEOUT)
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SW)
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -79,8 +80,8 @@ class DownloadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__skt.settimeout(0)
-        self.__skt.sendto(packet.encode(), self.__address)
+        if random.random() < 0.1:
+            self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __send_ack(self):
@@ -159,7 +160,6 @@ class DownloadClientSW:
             )
 
             self.__save_file_data(file_path)
-
             self.__send_ack()
             self.__wait_for_data()
 
@@ -172,9 +172,9 @@ class DownloadClientSW:
             self.__send_file_name_request()
             self.__recieve_file_data()
             print(f"File received: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
 
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()

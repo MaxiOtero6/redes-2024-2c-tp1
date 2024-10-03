@@ -13,7 +13,7 @@ import socket
 class UploadClientSW:
     def __init__(self, config: UploadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
@@ -53,17 +53,17 @@ class UploadClientSW:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(TIMEOUT)
+        self.__socket.settimeout(TIMEOUT)
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SW)
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -75,8 +75,8 @@ class UploadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        
-        self.__skt.sendto(packet.encode(), self.__address)
+        if random.random() < 0.1:
+            self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __wait_for_ack(self):
@@ -117,9 +117,10 @@ class UploadClientSW:
         print("File name ack received")
 
     def __send_file_data(self):
-        file_length = os.path.getsize(self.__config.SOURCE_PATH)
+        file_path = self.__config.SOURCE_PATH
+        file_length = os.path.getsize(file_path)
 
-        with open(self.__config.SOURCE_PATH, "rb") as file:
+        with open(file_path, "rb") as file:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:
@@ -162,9 +163,9 @@ class UploadClientSW:
             self.__send_file_data()
             self.__send_comm_fin()
             print(f"File sent: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
 
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()
