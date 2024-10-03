@@ -1,4 +1,5 @@
 import unittest
+from lib.client.download_client_sack import SEQUENCE_NUMBER_LIMIT
 from lib.packets.sack_packet import SACKPacket
 
 
@@ -88,3 +89,88 @@ class SACKPacketTest(unittest.TestCase):
         res: bytes = packet.encode()
 
         self.assertEqual(expected_bytes, res)
+        
+    def test_max_seq(self):
+
+        # ack_number = self.__last_packet_received.ack_number
+        # end_of_packet = self.__start_of_next_seq(packet)
+
+        ack_number = 10
+        end_of_packet = 4294967290
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
+
+        self.assertEqual(True, end_of_packet <= ack_number)
+
+    def test_max_seq2(self):
+
+        # ack_number = self.__last_packet_received.ack_number
+        # end_of_packet = self.__start_of_next_seq(packet)
+
+        ack_number = 4294967280
+        end_of_packet = 4294967290
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
+
+        self.assertEqual(False, end_of_packet <= ack_number)
+
+    def test_max_seq3(self):
+
+        # ack_number = self.__last_packet_received.ack_number
+        # end_of_packet = self.__start_of_next_seq(packet)
+
+        ack_number = 10
+        end_of_packet = SEQUENCE_NUMBER_LIMIT
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
+
+        self.assertEqual(True, end_of_packet <= ack_number)
+
+    def test_max_seq4(self):
+
+        # ack_number = self.__last_packet_received.ack_number
+        # end_of_packet = self.__start_of_next_seq(packet)
+
+        ack_number = (SEQUENCE_NUMBER_LIMIT / 2) + 1
+        end_of_packet = SEQUENCE_NUMBER_LIMIT
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
+
+        self.assertEqual(False, end_of_packet <= ack_number)
+
+    def test_max_seq5(self):
+
+        # ack_number = self.__last_packet_received.ack_number
+        # end_of_packet = self.__start_of_next_seq(packet)
+
+        ack_number = SEQUENCE_NUMBER_LIMIT
+        end_of_packet = 10
+
+        diference = abs(end_of_packet - ack_number)
+        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
+
+        self.assertEqual(False, end_of_packet <= ack_number)

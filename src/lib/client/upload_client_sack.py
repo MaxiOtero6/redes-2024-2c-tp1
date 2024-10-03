@@ -66,7 +66,10 @@ class UploadClientSACK:
 
         diference = abs(end_of_packet - ack_number)
         if diference > SEQUENCE_NUMBER_LIMIT / 2:
-            ack_number += SEQUENCE_NUMBER_LIMIT
+            if ack_number < end_of_packet:
+                ack_number += SEQUENCE_NUMBER_LIMIT
+            else:
+                end_of_packet += SEQUENCE_NUMBER_LIMIT
 
         return end_of_packet <= ack_number
 
