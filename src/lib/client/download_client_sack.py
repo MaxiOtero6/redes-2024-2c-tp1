@@ -127,8 +127,6 @@ class DownloadClientSACK:
         self.__rwnd = RCVBUFFER - sum([packet.length()
                                        for packet in self.__out_of_order_packets.values()])
 
-        print("RWND: ", self.__rwnd)
-
         packet = SACKPacket(
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
@@ -173,8 +171,7 @@ class DownloadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.__address)
+        self.__socket.sendto(packet.encode(), self.__address)
 
         self.__last_packet_created = packet
 

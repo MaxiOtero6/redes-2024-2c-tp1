@@ -1,4 +1,5 @@
 # import debugpy
+from lib.states.state import *
 import os
 import queue
 from collections import deque
@@ -28,6 +29,7 @@ class ClientHandlerSACK:
         self.__folder_path = folder_path
         self.__last_packet_created = None
         self.__timeout_count: int = 0
+        self.__congestion_state: State = SlowStart(0)
 
         # Reciever
         self.__in_order_packets = deque()  # [packets]
@@ -192,8 +194,6 @@ class ClientHandlerSACK:
         self.__rwnd = RCVBUFFER - sum([packet.length()
                                        for packet in self.__out_of_order_packets.values()])
 
-        print("RWND: ", self.__rwnd)
-
         packet = SACKPacket(
             self.__next_seq_number(),
             ack_num,
@@ -237,9 +237,9 @@ class ClientHandlerSACK:
                 return
 
             packet = SACKPacket.decode(data)
-            self.__swnd = packet.rwnd
-            print("SWND: ", self.__swnd)
-            print(f"seq: {packet.seq_number}, ack: {packet.ack_number}")
+
+            self.__swnd = min(self.__congestion_state.cwnd(), packet.rwnd)
+
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
@@ -252,17 +252,20 @@ class ClientHandlerSACK:
                     f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
 
-            if self.__last_packet_received is None or self.__last_packet_received.upl:
-                self.__send_packet(self.__last_packet_created)
-            elif self.__last_packet_received.dwl:
-                self.__resend_window()
+            self.__congestion_state = self.__congestion_state.timeout_event(
+                self.__retransmit_timeout)
 
             self.__get_packet()
 
+    def __retransmit_timeout(self):
+        if self.__last_packet_received is None or self.__last_packet_received.upl:
+            self.__send_packet(self.__last_packet_created)
+        elif self.__last_packet_received.dwl:
+            self.__resend_window()
+
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.address)
+        self.__socket.sendto(packet.encode(), self.address)
 
         if self.__last_packet_received.dwl:
             self.__unacked_packets.append((packet, time.time()))
@@ -298,14 +301,19 @@ class ClientHandlerSACK:
         while unacked_packets:
             self.__unacked_packets.appendleft(unacked_packets.pop())
 
+    def __if_sack_handle(self):
+        if self.__sack_received():
+            self.__handle_sack()
+
     def __wait_for_ack(self):
         while True:
             # TODO: follow a cumulative ack policy
             self.__get_packet()
 
-            if self.__sack_received():
-                self.__handle_sack()
+            self.__congestion_state.ACK_event(
+                self.__last_packet_received, self.__if_sack_handle)
 
+            # if new ack, transmit new packet
             if self.__new_ack_received():
                 break
 
@@ -397,7 +405,7 @@ class ClientHandlerSACK:
             while len(data) > 0 or len(self.__unacked_packets) > 0:
                 while (
                     len(data) > 0 and
-                    len(data) + self.__in_flight_bytes < self.__swnd
+                    len(data) <= self.__swnd
                 ):  # TODO: prevent to send more than the window size
                     packet = self.__create_new_packet(
                         False,

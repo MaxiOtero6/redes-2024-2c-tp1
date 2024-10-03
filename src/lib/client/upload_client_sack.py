@@ -12,6 +12,8 @@ from lib.arguments.constants import (
 )
 import socket
 
+from lib.states.state import *
+
 SEQUENCE_NUMBER_LIMIT = 2**32
 
 
@@ -30,6 +32,7 @@ class UploadClientSACK:
         self.__timeout_count = 0
         self.__last_packet_created = None
         self.__swnd: int = 0
+        self.__congestion_state: State = SlowStart(0)
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -121,9 +124,9 @@ class UploadClientSACK:
         try:
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
-            self.__swnd = packet.rwnd
-            print("SWND: ", self.__swnd)
-            print(f"seq: {packet.seq_number}, ack: {packet.ack_number}")
+
+            self.__swnd = min(self.__congestion_state.cwnd(), packet.rwnd)
+
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
@@ -137,13 +140,14 @@ class UploadClientSACK:
                     "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
 
-            self.__resend_window()
+            self.__congestion_state = self.__congestion_state.timeout_event(
+                self.__resend_window)
+
             self.__get_packet()
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.__address)
+        self.__socket.sendto(packet.encode(), self.__address)
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
@@ -177,14 +181,19 @@ class UploadClientSACK:
         while unacked_packets:
             self.__unacked_packets.appendleft(unacked_packets.pop())
 
+    def __if_sack_handle(self):
+        if self.__sack_received():
+            self.__handle_sack()
+
     def __wait_for_ack(self):
         while True:
             # TODO: follow a cumulative ack policy
             self.__get_packet()
 
-            if self.__sack_received():
-                self.__handle_sack()
+            self.__congestion_state.ACK_event(
+                self.__last_packet_received, self.__if_sack_handle)
 
+            # if new ack, transmit new packet
             if self.__new_ack_received():
                 break
 
@@ -238,7 +247,7 @@ class UploadClientSACK:
             while len(data) > 0 or self.__unacked_packets:
                 while (
                     len(data) > 0 and
-                    len(data) + self.__in_flight_bytes < self.__swnd
+                    len(data) <= self.__swnd
                 ):  # TODO: prevent to send more than the window size
                     packet = self.__create_new_packet(
                         False,
@@ -257,9 +266,6 @@ class UploadClientSACK:
                     data = file.read(MAX_PAYLOAD_SIZE)
 
                 self.__wait_for_ack()
-                print(
-                    f"Ack received for packet {self.__last_packet_received.seq_number}"
-                )
 
     def __send_comm_fin(self):
         fin_packet = self.__create_new_packet(
