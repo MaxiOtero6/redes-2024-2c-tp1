@@ -188,12 +188,12 @@ class DownloadClientSW:
             self.__send_file_name_request()
             self.__receive_file_data()
             print(f"File received: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
         except InvalidFileName as e:
             print("Failed with error:", e)
             print("Closing communication")
-            self.__skt.close()
+            self.__socket.close()
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()

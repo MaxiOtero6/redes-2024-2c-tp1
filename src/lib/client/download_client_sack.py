@@ -1,6 +1,8 @@
+import os
 from collections import deque
 from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
+from lib.errors.invalid_file_name import InvalidFileName
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
@@ -205,6 +207,8 @@ class DownloadClientSACK:
             self.__send_packet(self.__last_packet_created)
             self.__get_packet()
 
+        self.__add_in_order_packet()
+
     def __wait_for_data(self):
         """Wait for data from the client."""
         while True:
@@ -241,6 +245,20 @@ class DownloadClientSACK:
         self.__wait_for_ack()
         print("Start ack received")
 
+    def __file_name_acknowledged(self):
+        self.__get_packet()
+
+        file_name_acknowledged = True
+        while not self.__last_packet_received.fin and not self.__last_packet_sent_was_ack():
+            self.__send_packet(self.__last_packet_created)
+            self.__get_packet()
+
+        if self.__last_packet_received.fin:
+            self.__send_ack()
+            file_name_acknowledged = False
+
+        return file_name_acknowledged
+
     def __send_file_name_request(self):
         file_name_package = self.__create_new_packet(
             True,
@@ -253,16 +271,18 @@ class DownloadClientSACK:
         self.__send_packet(file_name_package)
         print(f"File name request sent: {self.__config.FILE_NAME}")
 
-        self.__wait_for_ack()
-        print("File name ack received")
+        if self.__file_name_acknowledged():
+            print("File name ack received")
 
-        self.__add_in_order_packet()
+            self.__add_in_order_packet()
 
-        file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
+            file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
-        # Create an empty file or clear the existing file
-        with open(file_path, "wb") as _:
-            pass
+            # Create an empty file or clear the existing file
+            with open(file_path, "wb") as _:
+                pass
+        else:
+            raise InvalidFileName(f"File name: {self.__config.FILE_NAME} was not found by server")
 
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
@@ -271,7 +291,7 @@ class DownloadClientSACK:
                 packet = self.__in_order_packets.popleft()
                 file.write(packet.payload)
 
-    def __recieve_file_data(self):
+    def __receive_file_data(self):
         print("Receiving file data")
         file_path = f"{self.__config.DESTINATION_PATH}/{self.__config.FILE_NAME}"
 
@@ -286,15 +306,23 @@ class DownloadClientSACK:
 
         self.__send_ack()
 
+    def __check_file_in_fs(self):
+        """Check if the file exists in the file system."""
+        if not os.path.exists(self.__config.SOURCE_PATH):
+            raise FileNotFoundError(f"File not found: {self.__config.SOURCE_PATH}")
+
     def run(self):
         try:
             print("Starting file download")
             self.__send_comm_start()
             self.__send_file_name_request()
-            self.__recieve_file_data()
+            self.__receive_file_data()
             print(f"File received: {self.__config.FILE_NAME}")
             self.__socket.close()
-
+        except InvalidFileName as e:
+            print("Failed with error:", e)
+            print("Closing communication")
+            self.__socket.close()
         except BrokenPipeError as e:
             print(str(e))
             self.__socket.close()

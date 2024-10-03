@@ -197,17 +197,14 @@ class ClientHandlerSW:
         """Handle a download packet."""
         try:
             file_path = self.__check_file_in_fs(file_name)
+            print(f"Sending file: {file_name}")
+            self.__send_file_data(file_path)
+            self.__send_fin()
         except InvalidFileName as e:
             print("Failed with error:", e)
             print("No file found with the name:", file_name)
             print("Sending comm fin to client")
             self.__send_fin()
-            return
-
-        print(f"Sending file: {file_name}")
-
-        self.__send_file_data(file_path)
-        self.__send_fin()
 
     def __handle_fin(self):
         """Handle the final FIN packet."""

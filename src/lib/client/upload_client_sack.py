@@ -283,15 +283,15 @@ class UploadClientSACK:
             self.__send_file_data()
             self.__send_comm_fin()
             print(f"File sent: {self.__config.FILE_NAME}")
-            self.__skt.close()
+            self.__socket.close()
         except FileNotFoundError as e:
             print("Error: ", e)
             print("File not found or path is incorrect, please check the path and try again")
             print("Closing connection")
-            self.__skt.close()
+            self.__socket.close()
         except BrokenPipeError as e:
             print(str(e))
-            self.__skt.close()
+            self.__socket.close()
             exit()
 
 
