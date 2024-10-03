@@ -64,7 +64,7 @@ class UploadClientSW:
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -76,7 +76,7 @@ class UploadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        if random.random() < 0.8:
+        if random.random() < 0.1:
             self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
@@ -118,9 +118,10 @@ class UploadClientSW:
         print("File name ack received")
 
     def __send_file_data(self):
-        file_length = os.path.getsize(self.__config.SOURCE_PATH)
+        file_path = self.__config.SOURCE_PATH
+        file_length = os.path.getsize(file_path)
 
-        with open(self.__config.SOURCE_PATH, "rb") as file:
+        with open(file_path, "rb") as file:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) != 0:

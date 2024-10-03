@@ -1,3 +1,4 @@
+import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
@@ -67,7 +68,7 @@ class DownloadClientSW:
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -79,8 +80,8 @@ class DownloadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__socket.settimeout(0)
-        self.__socket.sendto(packet.encode(), self.__address)
+        if random.random() < 0.1:
+            self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __send_ack(self):
@@ -159,7 +160,6 @@ class DownloadClientSW:
             )
 
             self.__save_file_data(file_path)
-
             self.__send_ack()
             self.__wait_for_data()
 
