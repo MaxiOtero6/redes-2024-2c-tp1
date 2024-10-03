@@ -1,7 +1,7 @@
 from lib.config import Config
 
-DESTINATION_PATH_INDEX = 4
-FILE_NAME_INDEX = 5
+DESTINATION_PATH_INDEX = 5
+FILE_NAME_INDEX = 6
 
 
 class DownloadConfig(Config):

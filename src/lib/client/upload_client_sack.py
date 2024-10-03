@@ -1,14 +1,12 @@
 import os
 from collections import deque
-import random
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 import socket
 
@@ -29,10 +27,11 @@ class UploadClientSACK:
         )  # list of unacked packets (packet, time) # noqa
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
-        self.__timeout_count = 0
         self.__last_packet_created = None
         self.__swnd: int = 0
         self.__congestion_state: State = SlowStart(0)
+        self.__timeout_count = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -57,10 +56,10 @@ class UploadClientSACK:
 
         elapsed_time = time.time() - self.__unacked_packets[0][1]
 
-        if elapsed_time > TIMEOUT:
+        if elapsed_time > self.__timeout:
             return 0
 
-        return TIMEOUT - elapsed_time
+        return self.__timeout - elapsed_time
 
     def __packet_was_acked(self, packet):
         """Check if the packet was acked."""
@@ -135,7 +134,7 @@ class UploadClientSACK:
             self.__timeout_count += 1
             # print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )

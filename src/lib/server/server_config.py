@@ -1,6 +1,6 @@
 from lib.config import Config
 
-STORAGE_DIR_PATH_INDEX = 4
+STORAGE_DIR_PATH_INDEX = 5
 
 
 class ServerConfig(Config):

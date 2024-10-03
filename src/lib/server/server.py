@@ -25,12 +25,18 @@ class Server:
         match (self.__config.ALGORITHM):
             case "sw":
                 return ClientHandlerSW(
-                    address, self.__socket, self.__config.STORAGE_DIR_PATH
+                    address,
+                    self.__socket,
+                    self.__config.STORAGE_DIR_PATH,
+                    self.__config.TIMEOUT,
                 )
 
             case "sack":
                 return ClientHandlerSACK(
-                    address, self.__socket, self.__config.STORAGE_DIR_PATH
+                    address,
+                    self.__socket,
+                    self.__config.STORAGE_DIR_PATH,
+                    self.__config.TIMEOUT,
                 )
 
             case _:

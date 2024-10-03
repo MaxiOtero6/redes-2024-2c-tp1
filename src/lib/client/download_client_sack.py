@@ -1,12 +1,10 @@
 from collections import deque
-import random
 from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 import socket
 
@@ -23,6 +21,7 @@ class DownloadClientSACK:
         self.__last_packet_created = None
         self.__last_packet_received = None
         self.__timeout_count: int = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
         # Reciever
         self.__in_order_packets = deque()  # [packets]
@@ -146,7 +145,7 @@ class DownloadClientSACK:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            self.__socket.settimeout(TIMEOUT)
+            self.__socket.settimeout(self.__timeout)
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
 
             if self.__rwnd <= 0:
@@ -161,7 +160,7 @@ class DownloadClientSACK:
             self.__timeout_count += 1
             # print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached, is client {self.__address} alive?. Closing connection"  # noqa
                 )

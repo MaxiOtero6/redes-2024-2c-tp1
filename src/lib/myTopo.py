@@ -10,10 +10,10 @@ import time
 class MyTopo(Topo):
     "Simple topology example with a variable number of clients."
 
-    def __init__(self, num_hosts=2, loss=10, delay='20ms'):
+    def __init__(self, num_hosts=2, loss=10, delay=20):
         self.num_hosts = num_hosts
         self.loss = loss
-        self.delay = delay
+        self.delay = str(delay) + 'ms'
         Topo.__init__(self)
         self.build()
 
@@ -74,6 +74,6 @@ if __name__ == '__main__':
     server_command = sys.argv[2]
     client_command = sys.argv[3]
     loss = int(sys.argv[4])
-    delay = sys.argv[5]
+    delay = int(sys.argv[5])
 
     start_server_and_clients(num_hosts, server_command, client_command, loss, delay)

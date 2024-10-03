@@ -36,7 +36,8 @@ optional arguments: # noqa
     -p, --port server port # noqa
     -d, --dst destination file path # noqa
     -n, --name file name # noqa
-    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
+    -a, --algorithm data transfer algorithm [sw | sack] # noqa
+    -t --timeout timeout in miliseconds"""  # noqa
         )
         exit()
 
@@ -52,7 +53,8 @@ optional arguments: # noqa
     -p, --port server port # noqa
     -s, --src source file path # noqa
     -n, --name file name # noqa
-    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
+    -a, --algorithm data transfer algorithm [sw | sack] # noqa
+    -t --timeout timeout in miliseconds"""  # noqa
         )
         exit()
 
@@ -67,7 +69,8 @@ optional arguments: # noqa
     -H, --host service IP address # noqa
     -p, --port service port # noqa
     -s, --storage storage dir path # noqa
-    -a, --algorithm data transfer algorithm [sw | sack]"""  # noqa
+    -a, --algorithm data transfer algorithm [sw | sack] # noqa
+    -t --timeout timeout in miliseconds"""  # noqa
         )
         exit()
 
@@ -103,9 +106,7 @@ optional arguments: # noqa
 
     def __get_storage_dir(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(
-                ("-s", "--storage"), argv
-            )
+            idx = self.__get_argv_index(("-s", "--storage"), argv)
             return argv[idx + 1]
 
         except IndexError:
@@ -119,9 +120,7 @@ optional arguments: # noqa
 
     def __get_source_path(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(
-                ("-s", "--src"), argv
-            )
+            idx = self.__get_argv_index(("-s", "--src"), argv)
             return argv[idx + 1]
 
         except IndexError:
@@ -136,9 +135,7 @@ optional arguments: # noqa
 
     def __get_destination_path(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(
-                ("-d", "--dst"), argv
-            )
+            idx = self.__get_argv_index(("-d", "--dst"), argv)
             return argv[idx + 1]
 
         except IndexError:
@@ -153,9 +150,7 @@ optional arguments: # noqa
 
     def __get_file_name(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(
-                ("-n", "--name"), argv
-            )
+            idx = self.__get_argv_index(("-n", "--name"), argv)
             return argv[idx + 1]
 
         except IndexError:
@@ -170,14 +165,27 @@ optional arguments: # noqa
 
     def __get_algorithm(self, argv: list[str]) -> str:
         try:
-            idx = self.__get_argv_index(
-                ("-a", "--algorithm"), argv
-            )
+            idx = self.__get_argv_index(("-a", "--algorithm"), argv)
             return self.validator.validate_algorithm(argv[idx + 1])
 
         except IndexError:
             print(
-                "The algorithm must be specified after -a or --algorithm, e.g: -a sw" # noqa
+                "The algorithm must be specified after -a or --algorithm, e.g: -a sw"  # noqa
+            )
+            exit()
+
+        except Exception as e:
+            print(str(e))
+            exit()
+
+    def __get_timeout(self, argv: list[str]) -> int:
+        try:
+            idx = self.__get_argv_index(("-t", "--timeout"), argv)
+            return self.validator.validate_timeout(argv[idx + 1])
+
+        except IndexError:
+            print(
+                "The timeout must be specified after -t or --timeout, e.g: -t 1000"  # noqa
             )
             exit()
 
@@ -194,6 +202,7 @@ optional arguments: # noqa
         port = constants.DEFAULT_SERVER_PORT
         storage_dir_path = constants.DEFAULT_SERVER_STORAGE_DIR_PATH
         algorithm = constants.DEFAULT_ALGORITHM
+        timeout = constants.DEFAULT_TIMEOUT
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -213,7 +222,10 @@ optional arguments: # noqa
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
-        return ServerConfig([verbose, host, port, algorithm, storage_dir_path])
+        if "-t" in argv or "--timeout" in argv:
+            timeout = self.__get_timeout(argv)
+
+        return ServerConfig([verbose, host, port, algorithm, timeout, storage_dir_path])
 
     def __load_upload_client_args(self, argv: list[str]) -> UploadConfig:
         if "-h" in argv or "--help" in argv:
@@ -225,6 +237,7 @@ optional arguments: # noqa
         file_name = None
         source_path = None
         algorithm = constants.DEFAULT_ALGORITHM
+        timeout = constants.DEFAULT_TIMEOUT
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -247,8 +260,11 @@ optional arguments: # noqa
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
+        if "-t" in argv or "--timeout" in argv:
+            timeout = self.__get_timeout(argv)
+
         return UploadConfig(
-            [verbose, host, port, algorithm, source_path, file_name]
+            [verbose, host, port, algorithm, timeout, source_path, file_name]
         )
 
     def __load_download_client_args(self, argv: list[str]) -> DownloadConfig:
@@ -261,6 +277,7 @@ optional arguments: # noqa
         destination_path = constants.DEFAULT_DOWNLOAD_DESTINATION_PATH
         file_name = None
         algorithm = constants.DEFAULT_ALGORITHM
+        timeout = constants.DEFAULT_TIMEOUT
 
         if "-v" in argv or "--verbose" in argv:
             verbose = Verbose.VERBOSE
@@ -283,8 +300,11 @@ optional arguments: # noqa
         if "-a" in argv or "--algorithm" in argv:
             algorithm = self.__get_algorithm(argv)
 
+        if "-t" in argv or "--timeout" in argv:
+            timeout = self.__get_timeout(argv)
+
         return DownloadConfig(
-            [verbose, host, port, algorithm, destination_path, file_name]
+            [verbose, host, port, algorithm, timeout, destination_path, file_name]
         )
 
     def __get_binary(self, path: str) -> str:
