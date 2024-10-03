@@ -1,11 +1,11 @@
 import os
+import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SW,
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 import socket
 
@@ -18,6 +18,7 @@ class UploadClientSW:
         self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__timeout_count: int = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -53,7 +54,7 @@ class UploadClientSW:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__socket.settimeout(TIMEOUT)
+        self.__socket.settimeout(self.__timeout)
 
         try:
             data = self.__socket.recv(MAX_PACKET_SIZE_SW)
@@ -65,7 +66,7 @@ class UploadClientSW:
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )

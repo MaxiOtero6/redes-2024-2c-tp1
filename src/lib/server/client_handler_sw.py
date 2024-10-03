@@ -1,15 +1,13 @@
 import queue
-import time
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 from lib.packets.sw_packet import SWPacket
 
 
 class ClientHandlerSW:
-    def __init__(self, address, socket, folder_path):
+    def __init__(self, address, socket, folder_path, timeout):
         self.data_queue = queue.Queue()
         self.address = address
         self.__socket = socket
@@ -17,6 +15,7 @@ class ClientHandlerSW:
         self.__last_packet_received = None
         self.__last_packet_sent = None
         self.__timeout_count: int = 0
+        self.__timeout = timeout / 1000
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -59,7 +58,7 @@ class ClientHandlerSW:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            data = self.data_queue.get(timeout=TIMEOUT)
+            data = self.data_queue.get(timeout=self.__timeout)
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -68,7 +67,7 @@ class ClientHandlerSW:
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
@@ -144,9 +143,6 @@ class ClientHandlerSW:
                 )
                 self.__send_packet(data_packet)
                 self.__wait_for_ack()
-
-                # sleep for a second
-                #time.sleep(0.1)
 
                 data = file.read(MAX_PAYLOAD_SIZE)
                 is_first_packet = False

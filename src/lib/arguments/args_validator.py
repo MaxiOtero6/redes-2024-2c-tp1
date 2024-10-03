@@ -23,3 +23,14 @@ class ArgsValidator:
             raise ValueError("Algorithm must be 'sw' or 'sack'")
 
         return algo
+
+    def validate_timeout(self, timeout: str) -> int:
+        if not timeout.isnumeric():
+            raise ValueError("Timeout must be an unsigned integer")
+
+        timeout = int(timeout)
+
+        if timeout >= 0:
+            return timeout
+
+        raise ValueError("Timeout must be a positive integer")

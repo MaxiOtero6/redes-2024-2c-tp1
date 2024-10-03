@@ -5,25 +5,23 @@ from collections import deque
 import time
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = MAX_PAYLOAD_SIZE * 2
 
-# debugpy.debug_this_thread()
-
 
 class ClientHandlerSACK:
-    def __init__(self, address, socket, folder_path):
+    def __init__(self, address, socket, folder_path, timeout):
         self.data_queue = queue.Queue()
         self.address = address
         self.__socket = socket
         self.__folder_path = folder_path
         self.__last_packet_created = None
         self.__timeout_count: int = 0
+        self.__timeout = timeout / 1000
 
         # Reciever
         self.__in_order_packets = deque()  # [packets]
@@ -76,10 +74,10 @@ class ClientHandlerSACK:
 
         elapsed_time = time.time() - self.__unacked_packets[0][1]
 
-        if elapsed_time > TIMEOUT:
+        if elapsed_time > self.__timeout:
             return 0
 
-        return TIMEOUT - elapsed_time
+        return self.__timeout - elapsed_time
 
     def __packet_was_acked(self, packet):
         """Check if the packet was acked."""
@@ -215,7 +213,7 @@ class ClientHandlerSACK:
 
         timeout: float
         if self.__last_packet_received is None or self.__last_packet_received.upl:
-            timeout = TIMEOUT
+            timeout = self.__timeout
         elif self.__last_packet_received.dwl:
             timeout = self.__time_to_first_unacked_packed_timeout()
 
@@ -229,7 +227,7 @@ class ClientHandlerSACK:
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
