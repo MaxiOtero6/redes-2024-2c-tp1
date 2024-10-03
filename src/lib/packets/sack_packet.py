@@ -28,10 +28,11 @@ class SACKPacket:
     |                                        Right Edge of Block N (4B)                                         | # noqa
     +--------------------------+--------------------------+--------------------------+--------------------------+ # noqa
     |                                                                                                           | # noqa
-    |                                                Data (512B)                                                | # noqa
+    |                                                Data (5KB)                                                | # noqa
     |                                                                                                           | # noqa
     +--------------------------+--------------------------+--------------------------+--------------------------+ # noqa
     """
+
     seq_number: int
     ack_number: int
     rwnd: int
@@ -78,9 +79,8 @@ class SACKPacket:
 
         data += pack("!HBB", self.rwnd, self.upl, self.dwl)
 
-        data += pack(
-            "!BBBB", self.ack, self.syn, self.fin, len(self.block_edges)
-        )
+        data += pack("!BBBB", self.ack, self.syn,
+                     self.fin, len(self.block_edges))
 
         for edges in self.block_edges:
             data += pack("!II", edges[LEFT_EDGE], edges[RIGHT_EDGE])
@@ -113,9 +113,7 @@ class SACKPacket:
         ack, syn, fin, blocks = unpack("!BBBB", data[12:16:])
 
         for i in range(blocks):
-            block_edges.append(
-                unpack("!II", data[16 + 8 * i:24 + 8 * i:])
-            )
+            block_edges.append(unpack("!II", data[16 + 8 * i: 24 + 8 * i:]))
 
         header_length: int = HEADER_MIN_LENGTH_BYTES + blocks * BOTH_EDGE_SIZES
         payload: bytes = data[header_length::]
