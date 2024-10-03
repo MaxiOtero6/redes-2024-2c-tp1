@@ -182,7 +182,7 @@ class ClientHandlerSACK:
             self.__last_received_seq_number()
             if (dwl and not syn)
             else self.__end_of_last_ordered_packet()
-        )
+        )  # TODO: Check if this is correct
 
         packet = SACKPacket(
             self.__next_seq_number(),
