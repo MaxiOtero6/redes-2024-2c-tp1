@@ -53,7 +53,7 @@ class ClientHandlerSACK:
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
-        return self.__last_packet_received.seq_number
+        return self.__start_of_next_seq(self.__last_packet_received)
 
     def __next_expected_seq_number(self):
         """Get the next expected sequence number."""
@@ -175,9 +175,12 @@ class ClientHandlerSACK:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        ack_num = self.__last_received_seq_number(
+        ) if (dwl and not syn) else self.__end_of_last_ordered_packet()
+
         packet = SACKPacket(
             self.__next_seq_number(),
-            self.__end_of_last_ordered_packet(),
+            ack_num,
             RWND,
             upl,
             dwl,
@@ -244,8 +247,6 @@ class ClientHandlerSACK:
         else:
             print("Loss")
 
-        self.__last_packet_created = packet
-
         # TODO: Maybe generalize this
         if self.__last_packet_received.dwl:
             self.__unacked_packets.append((packet, time.time()))
@@ -292,7 +293,6 @@ class ClientHandlerSACK:
                 self.__handle_sack()
 
             if self.__new_ack_received():
-                self.__last_ordered_packet_received = self.__last_packet_received
                 # TODO: check
                 break
 
@@ -469,27 +469,27 @@ class ClientHandlerSACK:
             if self.__last_packet_is_ordered():
                 self.__add_in_order_packet()
             else:
-                raise Exception("Invalid request")  # TODO: Handle this
+                raise Exception("Invalid request 1")  # TODO: Handle this
 
             # Handle the initial SYN packet
             if self.__last_packet_received.syn:
                 self.__handle_syn()
             else:
-                raise Exception("Invalid request")
+                raise Exception("Invalid request 2")
 
             # Get the file name
             self.__get_packet()
             if self.__last_packet_is_ordered():
                 self.__add_in_order_packet()
             else:
-                raise Exception("Invalid request")  # TODO: Handle this
+                raise Exception("Invalid request 3")  # TODO: Handle this
 
             file_name: str = ""
 
             if self.__last_packet_received.upl or self.__last_packet_received.dwl:
                 file_name = self.__handle_file_name()
             else:
-                raise Exception("Invalid request")
+                raise Exception("Invalid request 4")
 
             # Handle the file data
             if self.__last_packet_received.upl:

@@ -45,7 +45,7 @@ class UploadClientSACK:
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
-        return self.__last_packet_received.seq_number
+        return self.__start_of_next_seq(self.__last_packet_received)
 
     def __time_to_first_unacked_packed_timeout(self):
         """Get the time to the first unacked packet timeout."""
@@ -160,6 +160,7 @@ class UploadClientSACK:
                 if packet.seq_number < start:
                     # packet not in any block edge
                     unacked_packets.append((packet, time))
+                    continue
 
                 elif self.__start_of_next_seq(packet) > end:
                     # packet not in this block edge, add it back and try the next one # noqa
