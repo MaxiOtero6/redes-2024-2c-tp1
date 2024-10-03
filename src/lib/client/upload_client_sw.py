@@ -155,17 +155,28 @@ class UploadClientSW:
         self.__wait_for_ack()
         print("Fin ack received")
 
+    def __check_file_in_fs(self):
+        """Check if the file exists in the file system."""
+        if not os.path.exists(self.__config.SOURCE_PATH):
+            raise FileNotFoundError(f"File not found: {self.__config.SOURCE_PATH}")
+
     def run(self):
         try:
+            print("Starting file upload")
             print("Starting file upload")
             self.__send_comm_start()
             self.__send_file_name()
             self.__send_file_data()
             self.__send_comm_fin()
             print(f"File sent: {self.__config.FILE_NAME}")
-            self.__skt.close()
-
         except BrokenPipeError as e:
             print(str(e))
             self.__skt.close()
             exit()
+
+        except FileNotFoundError as e:
+            print("Error: ", e)
+            print("File not found or path is incorrect, please check the path and try again")
+            print("Closing connection")
+
+        self.__skt.close()
