@@ -1,5 +1,4 @@
 from collections import deque
-import random
 from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
