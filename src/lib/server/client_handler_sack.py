@@ -229,7 +229,7 @@ class ClientHandlerSACK:
 
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
-                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
+                    f"Max timeouts reached. Closing connection {self.address}"  # noqa
                 )
 
             if self.__last_packet_received is None or self.__last_packet_received.upl:

@@ -149,11 +149,9 @@ class DownloadClientSACK:
         # socket timeout
         except (socket.timeout, Exception):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
-
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
-                    f"Max timeouts reached, is client {self.__address} alive?. Closing connection"  # noqa
+                    f"Max timeouts reached. Closing connection {self.__address}"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_created)
@@ -208,8 +206,6 @@ class DownloadClientSACK:
     def __wait_for_data(self):
         """Wait for data from the client."""
         while True:
-            print("Waiting for data")
-
             self.__get_packet()
 
             if self.__last_packet_received.dwl and self.__last_packet_is_ordered():

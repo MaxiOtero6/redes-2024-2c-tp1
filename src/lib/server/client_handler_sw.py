@@ -65,11 +65,9 @@ class ClientHandlerSW:
 
         except (queue.Empty, Exception):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
-
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
-                    f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
+                    f"Max timeouts reached. Closing connection {self.address}"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
@@ -105,7 +103,6 @@ class ClientHandlerSW:
         self.__get_packet()
 
         while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
-            print("Waiting for data")
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 

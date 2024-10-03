@@ -126,11 +126,9 @@ class UploadClientSACK:
         # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera # noqa
         except (socket.timeout, BlockingIOError):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
-
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
-                    "Max timeouts reached, is client alive?. Closing connection"  # noqa
+                    "Max timeouts reached. Closing connection"  # noqa
                 )
 
             self.__resend_window()

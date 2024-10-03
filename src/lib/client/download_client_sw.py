@@ -67,11 +67,9 @@ class DownloadClientSW:
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
-
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
-                    "Max timeouts reached, is client alive?. Closing connection"  # noqa
+                    "Max timeouts reached. Closing connection"  # noqa
                 )
 
             self.__send_packet(self.__last_packet_sent)
