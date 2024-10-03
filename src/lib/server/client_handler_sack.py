@@ -22,7 +22,7 @@ class ClientHandlerSACK:
         self.address = address
         self.__socket = socket
         self.__folder_path = folder_path
-        self.__last_packet_sent = None
+        self.__last_packet_created = None
         self.__timeout_count: int = 0
 
         # Reciever
@@ -44,9 +44,9 @@ class ClientHandlerSACK:
 
     def __next_seq_number(self):
         """Get the next sequence number."""
-        if self.__last_packet_sent is None:
+        if self.__last_packet_created is None:
             return 0
-        return self.__start_of_next_seq(self.__last_packet_sent)
+        return self.__start_of_next_seq(self.__last_packet_created)
 
     def __last_received_seq_number(self):
         """Get the last received sequence number."""
@@ -174,7 +174,7 @@ class ClientHandlerSACK:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
-        return SACKPacket(
+        packet = SACKPacket(
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
             RWND,
@@ -186,6 +186,9 @@ class ClientHandlerSACK:
             self.__received_blocks_edges,
             payload,
         )
+
+        self.__last_packet_created = packet
+        return packet
 
     def __resend_window(self):
         """Resend all packets in the window."""
@@ -226,7 +229,7 @@ class ClientHandlerSACK:
             # TODO: Maybe generalize this
 
             if self.__last_packet_received is None or self.__last_packet_received.upl:
-                self.__send_packet(self.__last_packet_sent)
+                self.__send_packet(self.__last_packet_created)
             elif self.__last_packet_received.dwl:
                 self.__resend_window()
 
@@ -235,8 +238,7 @@ class ClientHandlerSACK:
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
         self.__socket.sendto(packet.encode(), self.address)
-        self.__last_packet_sent = packet
-        # packet.debug()
+        self.__last_packet_created = packet
 
         # TODO: Maybe generalize this
         if self.__last_packet_received.dwl:

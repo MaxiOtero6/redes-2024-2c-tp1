@@ -4,6 +4,7 @@ from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_TIMEOUT_PER_PACKET,
+    TIMEOUT,
 )
 import socket
 
@@ -16,7 +17,7 @@ class DownloadClientSACK:
         self.__config = config
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
-        self.__last_packet_sent = None
+        self.__last_packet_created = None
         self.__last_packet_received = None
         self.__timeout_count: int = 0
 
@@ -32,9 +33,9 @@ class DownloadClientSACK:
 
     def __next_seq_number(self):
         """Get the next sequence number."""
-        if self.__last_packet_sent is None:
+        if self.__last_packet_created is None:
             return 0
-        return self.__start_of_next_seq(self.__last_packet_sent)
+        return self.__start_of_next_seq(self.__last_packet_created)
 
     def __next_expected_seq_number(self):
         """Get the next expected sequence number."""
@@ -44,7 +45,7 @@ class DownloadClientSACK:
 
     def __last_packet_is_ordered(self):
         """Check if the last packet received is in order."""
-        if self.__last_packet_received is None:
+        if self.__last_ordered_packet_received is None:
             return True
 
         return (
@@ -85,13 +86,11 @@ class DownloadClientSACK:
 
             _, first_block_end = self.__received_blocks_edges[0]
 
-            if first_block_end == self.__start_of_next_seq(
-                self.__last_ordered_packet_received
-            ):
+            if first_block_end == self.__next_expected_seq_number():
                 self.__received_blocks_edges.pop(0)
             else:
                 self.__received_blocks_edges[0] = (
-                    self.__last_ordered_packet_received.seq_number,
+                    self.__next_expected_seq_number(),
                     first_block_end,
                 )
 
@@ -106,7 +105,7 @@ class DownloadClientSACK:
     def __add_out_of_order_packet(self):
         """Add the out of order packet to the queue."""
         start = self.__last_packet_received.seq_number
-        end = start + self.__last_packet_received.payload.length()
+        end = start + self.__last_packet_received.length()
 
         self.__out_of_order_packets[start] = self.__last_packet_received
 
@@ -123,19 +122,20 @@ class DownloadClientSACK:
                 if block_index + 1 < len(self.__received_blocks_edges):
                     next_block_start, _ = self.__received_blocks_edges[block_index + 1]
                     if next_block_start == end:
-                        _, next_block_end = self.__received_blocks_edges[
+                        _, next_block_end = self.__received_blocks_edges.pop(
                             block_index + 1
-                        ]
+                        )
                         self.__received_blocks_edges[block_index] = (
-                            start,
+                            block_start,
                             next_block_end,
                         )
+                return
 
             if end < block_start:
                 self.__received_blocks_edges.insert(block_index, (start, end))
                 return
 
-        if ((start, end) not in self.__received_blocks_edges):
+        if (start, end) not in self.__received_blocks_edges:
             self.__received_blocks_edges.append((start, end))
 
     def __end_of_last_ordered_packet(self):
@@ -145,11 +145,7 @@ class DownloadClientSACK:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
-
-        print(self.__next_seq_number())
-        print(self.__end_of_last_ordered_packet())
-
-        return SACKPacket(
+        packet = SACKPacket(
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
             RWND,
@@ -162,9 +158,13 @@ class DownloadClientSACK:
             payload,
         )
 
+        self.__last_packet_created = packet
+        return packet
+
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
+            self.__socket.settimeout(TIMEOUT)
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
@@ -180,14 +180,14 @@ class DownloadClientSACK:
                     f"Max timeouts reached, is client {self.__address} alive?. Closing connection"  # noqa
                 )
 
-            self.__send_packet(self.__last_packet_sent)
+            self.__send_packet(self.__last_packet_created)
             self.__get_packet()
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
+        self.__socket.settimeout(0)
         self.__socket.sendto(packet.encode(), self.__address)
-        self.__last_packet_sent = packet
-        packet.debug()
+        self.__last_packet_created = packet
 
     def __send_ack(self):
         """Send an acknowledgment to the client."""
@@ -252,7 +252,7 @@ class DownloadClientSACK:
         """Check if the last packet sent was an acknowledgment."""
         return (
             self.__last_packet_received.ack
-            and self.__start_of_next_seq(self.__last_packet_sent)
+            and self.__start_of_next_seq(self.__last_packet_created)
             == self.__last_packet_received.ack_number
         )
 
@@ -260,7 +260,7 @@ class DownloadClientSACK:
         self.__get_packet()
 
         while not self.__last_packet_sent_was_ack():
-            self.__send_packet(self.__last_packet_sent)
+            self.__send_packet(self.__last_packet_created)
             self.__get_packet()
 
     def __wait_for_data(self):
@@ -273,8 +273,12 @@ class DownloadClientSACK:
             if self.__last_packet_received.dwl and self.__last_packet_is_ordered():
                 break
 
-            self.__add_out_of_order_packet()
-            self.__send_sack()
+            if (
+                self.__last_packet_received.seq_number
+                >= self.__next_expected_seq_number()
+            ):
+                self.__add_out_of_order_packet()
+                self.__send_sack()
 
         # The last packet received is ordered
         self.__add_in_order_packet()
@@ -336,7 +340,7 @@ class DownloadClientSACK:
         # self.__in_order_packets.clear()
         # self.__wait_for_data()
 
-        while not self.__last_packet_received.fin:
+        while not self.__last_ordered_packet_received.fin:
             self.__save_file_data(file_path)
             self.__send_ack()
             self.__wait_for_data()
