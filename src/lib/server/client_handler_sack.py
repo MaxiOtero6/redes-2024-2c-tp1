@@ -4,6 +4,8 @@ import queue
 from collections import deque
 import random
 import time
+
+import debugpy
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
     MAX_TIMEOUT_PER_PACKET,
@@ -13,6 +15,7 @@ from lib.packets.sack_packet import SACKPacket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = MAX_PAYLOAD_SIZE * 2
+RCVBUFFER = MAX_PAYLOAD_SIZE * 10
 
 # debugpy.debug_this_thread()
 
@@ -31,6 +34,7 @@ class ClientHandlerSACK:
         self.__out_of_order_packets = {}  # {seq_number: packets}
         self.__received_blocks_edges = []  # [(start, end)]
         self.__last_ordered_packet_received = None
+        self.__rwnd: int = RCVBUFFER
 
         # Sender
         self.__unacked_packets = (
@@ -38,6 +42,7 @@ class ClientHandlerSACK:
         )  # list of unacked packets (packet, time) # noqa
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
+        self.__swnd: int = 0
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -184,10 +189,15 @@ class ClientHandlerSACK:
             else self.__end_of_last_ordered_packet()
         )  # TODO: Check if this is correct
 
+        self.__rwnd = RCVBUFFER - sum([packet.length()
+                                       for packet in self.__out_of_order_packets.values()])
+
+        print("RWND: ", self.__rwnd)
+
         packet = SACKPacket(
             self.__next_seq_number(),
             ack_num,
-            RWND,
+            self.__rwnd,
             upl,
             dwl,
             ack,
@@ -222,13 +232,20 @@ class ClientHandlerSACK:
 
         try:
             data = self.data_queue.get(timeout=timeout)
+
+            if self.__rwnd <= 0:
+                return
+
             packet = SACKPacket.decode(data)
+            self.__swnd = packet.rwnd
+            print("SWND: ", self.__swnd)
+            print(f"seq: {packet.seq_number}, ack: {packet.ack_number}")
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         except (queue.Empty, Exception):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
+            # print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -379,7 +396,8 @@ class ClientHandlerSACK:
             is_first_packet = True
             while len(data) > 0 or len(self.__unacked_packets) > 0:
                 while (
-                    len(data) > 0 and self.__in_flight_bytes < RWND
+                    len(data) > 0 and
+                    len(data) + self.__in_flight_bytes < self.__swnd
                 ):  # TODO: prevent to send more than the window size
                     packet = self.__create_new_packet(
                         False,

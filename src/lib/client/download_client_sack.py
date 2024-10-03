@@ -12,6 +12,7 @@ import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
 RWND = MAX_PAYLOAD_SIZE * 2
+RCVBUFFER = MAX_PAYLOAD_SIZE * 10
 
 
 class DownloadClientSACK:
@@ -28,6 +29,7 @@ class DownloadClientSACK:
         self.__out_of_order_packets = {}  # {seq_number: packets}
         self.__received_blocks_edges = []  # [(start, end)]
         self.__last_ordered_packet_received = None
+        self.__rwnd: int = RCVBUFFER
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -122,10 +124,15 @@ class DownloadClientSACK:
         return self.__start_of_next_seq(self.__last_ordered_packet_received)
 
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
+        self.__rwnd = RCVBUFFER - sum([packet.length()
+                                       for packet in self.__out_of_order_packets.values()])
+
+        print("RWND: ", self.__rwnd)
+
         packet = SACKPacket(
             self.__next_seq_number(),
             self.__end_of_last_ordered_packet(),
-            RWND,
+            self.__rwnd,
             upl,
             dwl,
             ack,
@@ -143,6 +150,10 @@ class DownloadClientSACK:
         try:
             self.__socket.settimeout(TIMEOUT)
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
+
+            if self.__rwnd <= 0:
+                return
+
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -150,7 +161,7 @@ class DownloadClientSACK:
         # socket timeout
         except (socket.timeout, Exception):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
+            # print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(

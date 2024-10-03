@@ -13,7 +13,6 @@ from lib.arguments.constants import (
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-WINDOW_SIZE = MAX_PAYLOAD_SIZE * 2
 
 
 class UploadClientSACK:
@@ -30,6 +29,7 @@ class UploadClientSACK:
         self.__in_flight_bytes = 0
         self.__timeout_count = 0
         self.__last_packet_created = None
+        self.__swnd: int = 0
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -91,7 +91,7 @@ class UploadClientSACK:
         packet = SACKPacket(
             self.__next_seq_number(),
             self.__last_received_seq_number(),
-            WINDOW_SIZE,
+            self.__swnd,
             upl,
             dwl,
             ack,
@@ -121,13 +121,16 @@ class UploadClientSACK:
         try:
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
+            self.__swnd = packet.rwnd
+            print("SWND: ", self.__swnd)
+            print(f"seq: {packet.seq_number}, ack: {packet.ack_number}")
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         # Cuando el tiempo de espera es 0 y no había nada en el socket o se excede el tiempo de espera # noqa
         except (socket.timeout, BlockingIOError):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
+            # print(f"Timeout number: {self.__timeout_count}")
 
             if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
                 raise BrokenPipeError(
@@ -234,7 +237,8 @@ class UploadClientSACK:
             data = file.read(MAX_PAYLOAD_SIZE)
             while len(data) > 0 or self.__unacked_packets:
                 while (
-                    len(data) > 0 and self.__in_flight_bytes < WINDOW_SIZE
+                    len(data) > 0 and
+                    len(data) + self.__in_flight_bytes < self.__swnd
                 ):  # TODO: prevent to send more than the window size
                     packet = self.__create_new_packet(
                         False,
