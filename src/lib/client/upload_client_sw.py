@@ -1,5 +1,4 @@
 import os
-import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
