@@ -2,6 +2,7 @@
 import os
 import queue
 from collections import deque
+import random
 import time
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
@@ -198,6 +199,7 @@ class ClientHandlerSACK:
         for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
             self.__in_flight_bytes -= packet.length()
+
             self.__send_packet(packet)
 
     def __get_packet(self):  # TODO: Differs senders and receivers
@@ -237,7 +239,11 @@ class ClientHandlerSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__socket.sendto(packet.encode(), self.address)
+        if random.random() < 0.8:
+            self.__socket.sendto(packet.encode(), self.address)
+        else:
+            print("Loss")
+
         self.__last_packet_created = packet
 
         # TODO: Maybe generalize this
@@ -262,13 +268,16 @@ class ClientHandlerSACK:
                 if packet.seq_number < start:
                     # packet not in any block edge
                     unacked_packets.append((packet, time))
+                    continue
 
                 elif self.__start_of_next_seq(packet) > end:
                     # packet not in this block edge, add it back and try the next one # noqa
                     self.__unacked_packets.appendleft((packet, time))
                     break
 
-                # packet was acked, no need to resend
+                # else:
+
+                    # packet was acked, no need to resend
                 self.__in_flight_bytes -= packet.length()
 
         while unacked_packets:
@@ -368,7 +377,9 @@ class ClientHandlerSACK:
             data_sent = 0
             data = file.read(MAX_PAYLOAD_SIZE)
             is_first_packet = True
-            while len(data) > 0 or self.__unacked_packets:
+            while len(data) > 0 or len(self.__unacked_packets) > 0:
+                print(f"pre cond IN FLIGHT: {self.__in_flight_bytes} < {RWND}")
+                print("COND: ", len(data) > 0 and self.__in_flight_bytes < RWND)
                 while (
                     len(data) > 0 and self.__in_flight_bytes < RWND
                 ):  # TODO: prevent to send more than the window size
@@ -388,6 +399,11 @@ class ClientHandlerSACK:
 
                     data = file.read(MAX_PAYLOAD_SIZE)
                     is_first_packet = False
+                    print(
+                        f"IN FLIGHT: {self.__in_flight_bytes} < {RWND}", end="\n\n")
+
+                if (self.__in_flight_bytes > RWND):
+                    print("pepe")
 
                 self.__wait_for_ack()
                 print("Ack received for packet")
