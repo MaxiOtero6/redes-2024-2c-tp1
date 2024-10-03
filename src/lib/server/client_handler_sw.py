@@ -4,15 +4,14 @@ import os
 from lib.arguments.constants import MAX_PAYLOAD_SIZE
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 from lib.packets.sw_packet import SWPacket
 from lib.errors.invalid_file_name import InvalidFileName
 
 
 class ClientHandlerSW:
-    def __init__(self, address, socket, folder_path):
+    def __init__(self, address, socket, folder_path, timeout):
         self.data_queue = queue.Queue()
         self.address = address
         self.__socket = socket
@@ -20,6 +19,7 @@ class ClientHandlerSW:
         self.__last_packet_received = None
         self.__last_packet_sent = None
         self.__timeout_count: int = 0
+        self.__timeout = timeout / 1000
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -62,16 +62,16 @@ class ClientHandlerSW:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            data = self.data_queue.get(timeout=TIMEOUT)
+            data = self.data_queue.get(timeout=self.__timeout)
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         except (queue.Empty, Exception):
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached, is client {self.address} alive?. Closing connection"  # noqa
                 )
@@ -218,35 +218,44 @@ class ClientHandlerSW:
         file_name = self.__last_packet_received.payload.decode()
         return file_name
 
+    def __wait_for_syn(self):
+        while True:
+            self.__get_packet()
+            # Handle the initial SYN packet
+            if self.__last_packet_received.syn:
+                self.__handle_syn()
+                break
+
+            else:
+                # TODO: Should add a timeout here
+                pass
+
+    def __wait_for_file_name(self):
+        while True:
+            self.__get_packet()
+
+            if self.__last_packet_is_new() and (
+                self.__last_packet_received.upl or self.__last_packet_received.dwl
+            ):
+                file_name = self.__handle_file_name()
+                if self.__last_packet_received.upl:
+                    self.__send_ack()
+
+                return file_name
+            else:
+                # TODO: Should add a timeout here
+                pass
+
     def handle_request(self):
         """Handle the client request."""
         try:
-
-            self.__get_packet()
-
-            # Handle the initial SYN packet
-
-            if self.__last_packet_received.syn:
-                self.__handle_syn()
-            else:
-                raise Exception("Invalid request")
-
-            # Get the file name
-
-            self.__get_packet()
-            file_name: str = ""
-
-            if self.__last_packet_received.upl or self.__last_packet_received.dwl:
-                file_name = self.__handle_file_name()
-            else:
-                raise Exception("Invalid request")
+            self.__wait_for_syn()
+            file_name = self.__wait_for_file_name()
 
             # Handle the file data
             if self.__last_packet_received.upl:
-                self.__send_ack()
                 self.__handle_upl(file_name)
             elif self.__last_packet_received.dwl:
-                # Automatically start the download process
                 self.__handle_dwl(file_name)
 
         except BrokenPipeError as e:

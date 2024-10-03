@@ -2,8 +2,7 @@ from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SW,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 from lib.arguments.constants import MAX_PACKET_SIZE_SW
 from lib.errors.invalid_file_name import InvalidFileName
@@ -13,11 +12,12 @@ import socket
 class DownloadClientSW:
     def __init__(self, config: DownloadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
         self.__last_packet_sent = None
         self.__last_packet_received = None
         self.__timeout_count: int = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
     def __next_seq_number(self):
         """Get the next sequence number."""
@@ -59,19 +59,19 @@ class DownloadClientSW:
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(TIMEOUT)
+        self.__socket.settimeout(self.__timeout)
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SW)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SW)
             packet = SWPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
 
         except socket.timeout:
             self.__timeout_count += 1
-            print(f"Timeout!!: {self.__timeout_count}")
+            print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
@@ -81,8 +81,8 @@ class DownloadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__skt.settimeout(0)
-        self.__skt.sendto(packet.encode(), self.__address)
+
+        self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __send_ack(self):
@@ -175,7 +175,6 @@ class DownloadClientSW:
             )
 
             self.__save_file_data(file_path)
-
             self.__send_ack()
             self.__wait_for_data()
 
@@ -189,10 +188,12 @@ class DownloadClientSW:
             self.__send_file_name_request()
             self.__receive_file_data()
             print(f"File received: {self.__config.FILE_NAME}")
+            self.__skt.close()
         except InvalidFileName as e:
             print("Failed with error:", e)
             print("Closing communication")
+            self.__skt.close()
         except BrokenPipeError as e:
             print(str(e))
+            self.__skt.close()
             exit()
-        self.__skt.close()

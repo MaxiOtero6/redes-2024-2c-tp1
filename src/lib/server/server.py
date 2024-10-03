@@ -15,8 +15,8 @@ class Server:
     def __init__(self, config: ServerConfig):
         self.__config = config
         self.__pool = ThreadPoolExecutor(max_workers=WORKERS)
-        self.__skt: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__skt.bind((config.HOST, config.PORT))
+        self.__socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket.bind((config.HOST, config.PORT))
         self.__clients_handlers = {}
 
     def __create_client(
@@ -25,12 +25,18 @@ class Server:
         match (self.__config.ALGORITHM):
             case "sw":
                 return ClientHandlerSW(
-                    address, self.__skt, self.__config.STORAGE_DIR_PATH
+                    address,
+                    self.__socket,
+                    self.__config.STORAGE_DIR_PATH,
+                    self.__config.TIMEOUT,
                 )
 
             case "sack":
                 return ClientHandlerSACK(
-                    address, self.__skt, self.__config.STORAGE_DIR_PATH
+                    address,
+                    self.__socket,
+                    self.__config.STORAGE_DIR_PATH,
+                    self.__config.TIMEOUT,
                 )
 
             case _:
@@ -45,7 +51,7 @@ class Server:
         )
 
         while True:
-            data, address = self.__skt.recvfrom(MAX_EXPECTED_PACKET_SIZE)
+            data, address = self.__socket.recvfrom(MAX_EXPECTED_PACKET_SIZE)
             if address not in self.__clients_handlers:
                 client = self.__create_client(address)
                 self.__clients_handlers[address] = client

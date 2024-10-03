@@ -4,13 +4,12 @@ from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-RWND = MAX_PAYLOAD_SIZE * 10
+RWND = MAX_PAYLOAD_SIZE * 2
 
 
 class DownloadClientSACK:
@@ -21,6 +20,7 @@ class DownloadClientSACK:
         self.__last_packet_created = None
         self.__last_packet_received = None
         self.__timeout_count: int = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
         # Reciever
         self.__in_order_packets = deque()  # [packets]
@@ -52,31 +52,6 @@ class DownloadClientSACK:
         return (
             self.__last_packet_received.seq_number == self.__next_expected_seq_number()
         )
-
-    # def __packet_was_acked(self, packet):
-    #     """Check if the packet was acked."""
-    #     ack_number = self.__last_packet_received.ack_number
-    #     end_of_packet = self.__start_of_next_seq(packet)
-
-    #     diference = abs(end_of_packet - ack_number)
-    #     if diference > SEQUENCE_NUMBER_LIMIT / 2:
-    #         ack_number += SEQUENCE_NUMBER_LIMIT
-
-    #     return end_of_packet <= ack_number
-
-    # def __new_ack_received(self):
-    #     """Check if the received packet acked the first unacked packet."""
-    #     if not self.__unacked_packets:
-    #         return False
-
-    #     first_packet = self.__unacked_packets[0][0]
-
-    #     return self.__packet_was_acked(first_packet)
-
-    # def __sack_received(self):
-    #     return (
-    #         self.__last_packet_received.ack and self.__last_packet_received.block_edges
-    #     )
 
     def __reorder_blocks(self):
         while self.__next_expected_seq_number() in self.__out_of_order_packets:
@@ -165,7 +140,7 @@ class DownloadClientSACK:
     def __get_packet(self):
         """Get the next packet from the queue."""
         try:
-            self.__socket.settimeout(TIMEOUT)
+            self.__socket.settimeout(self.__timeout)
             data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
@@ -176,7 +151,7 @@ class DownloadClientSACK:
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached, is client {self.__address} alive?. Closing connection"  # noqa
                 )
@@ -186,7 +161,6 @@ class DownloadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__socket.settimeout(0)
         self.__socket.sendto(packet.encode(), self.__address)
 
         self.__last_packet_created = packet
@@ -215,40 +189,6 @@ class DownloadClientSACK:
             b"",
         )
         self.__send_packet(sack_packet)
-
-    # def __send_fin(self):
-    #     """Send the final FIN packet."""
-    #     fin_packet = self.__create_new_packet(
-    #         False,
-    #         True,
-    #         False,
-    #         self.__last_packet_received.upl,
-    #         self.__last_packet_received.dwl,
-    #         b"",
-    #     )
-    #     self.__send_packet(fin_packet)
-    #     self.__wait_for_ack()
-
-    # def __wait_for_ack(self):
-    #     while True:
-    #         # TODO: follow a cumulative ack policy
-    #         self.__get_packet()
-
-    #         if self.__sack_received():
-    #             self.__handle_sack()
-
-    #         if self.__new_ack_received():
-    #             break
-
-    #     # At least one packet was acked, remove all acked packets from the unacked packets # noqa
-    #     while self.__unacked_packets:
-    #         packet, time = self.__unacked_packets.popleft()
-
-    #         if not self.__packet_was_acked(packet):
-    #             self.__unacked_packets.appendleft((packet, time))
-    #             break
-
-    #         self.__in_flight_bytes -= packet.length()
 
     def __last_packet_sent_was_ack(self):
         """Check if the last packet sent was an acknowledgment."""
@@ -338,9 +278,6 @@ class DownloadClientSACK:
         # To create / overwrite the file
         with open(file_path, "wb") as _:
             pass
-
-        # self.__in_order_packets.clear()
-        # self.__wait_for_data()
 
         while not self.__last_ordered_packet_received.fin:
             self.__save_file_data(file_path)

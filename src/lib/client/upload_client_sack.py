@@ -6,19 +6,18 @@ from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
     MAX_PACKET_SIZE_SACK,
     MAX_PAYLOAD_SIZE,
-    MAX_TIMEOUT_PER_PACKET,
-    TIMEOUT,
+    MAX_TIMEOUT_COUNT,
 )
 import socket
 
 SEQUENCE_NUMBER_LIMIT = 2**32
-WINDOW_SIZE = MAX_PAYLOAD_SIZE * 10
+WINDOW_SIZE = MAX_PAYLOAD_SIZE * 2
 
 
 class UploadClientSACK:
     def __init__(self, config: UploadConfig):
         self.__config = config
-        self.__skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__address = (self.__config.HOST, self.__config.PORT)
 
         # Sender
@@ -27,8 +26,9 @@ class UploadClientSACK:
         )  # list of unacked packets (packet, time) # noqa
         self.__last_packet_received = None
         self.__in_flight_bytes = 0
-        self.__timeout_count = 0
         self.__last_packet_created = None
+        self.__timeout_count = 0
+        self.__timeout = self.__config.TIMEOUT / 1000
 
     def __start_of_next_seq(self, packet):
         """Get the start of the next sequence number."""
@@ -53,10 +53,10 @@ class UploadClientSACK:
 
         elapsed_time = time.time() - self.__unacked_packets[0][1]
 
-        if elapsed_time > TIMEOUT:
+        if elapsed_time > self.__timeout:
             return 0
 
-        return TIMEOUT - elapsed_time
+        return self.__timeout - elapsed_time
 
     def __packet_was_acked(self, packet):
         """Check if the packet was acked."""
@@ -110,16 +110,15 @@ class UploadClientSACK:
         size: int = len(self.__unacked_packets)
         for _ in range(size):
             packet, _ = self.__unacked_packets.popleft()
-            print(f"Resending packet {packet.seq_number}")
             self.__in_flight_bytes -= packet.length()
             self.__send_packet(packet)
 
     def __get_packet(self):
         """Get the next packet from the queue."""
-        self.__skt.settimeout(self.__time_to_first_unacked_packed_timeout())
+        self.__socket.settimeout(self.__time_to_first_unacked_packed_timeout())
 
         try:
-            data = self.__skt.recv(MAX_PACKET_SIZE_SACK)
+            data = self.__socket.recv(MAX_PACKET_SIZE_SACK)
             packet = SACKPacket.decode(data)
             self.__last_packet_received = packet
             self.__timeout_count = 0
@@ -129,7 +128,7 @@ class UploadClientSACK:
             self.__timeout_count += 1
             print(f"Timeout number: {self.__timeout_count}")
 
-            if self.__timeout_count >= MAX_TIMEOUT_PER_PACKET:
+            if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     "Max timeouts reached, is client alive?. Closing connection"  # noqa
                 )
@@ -139,8 +138,7 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        self.__skt.sendto(packet.encode(), self.__address)
-
+        self.__socket.sendto(packet.encode(), self.__address)
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 
