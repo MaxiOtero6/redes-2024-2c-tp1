@@ -1,6 +1,5 @@
 import os
 from collections import deque
-import random
 import time
 from lib.packets.sack_packet import SACKPacket
 from lib.client.upload_config import UploadConfig
@@ -139,8 +138,7 @@ class UploadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.__address)
+        self.__socket.sendto(packet.encode(), self.__address)
         self.__unacked_packets.append((packet, time.time()))
         self.__in_flight_bytes += packet.length()
 

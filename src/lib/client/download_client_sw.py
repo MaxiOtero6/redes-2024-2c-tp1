@@ -1,4 +1,3 @@
-import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
@@ -80,8 +79,8 @@ class DownloadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.__address)
+        
+        self.__socket.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __send_ack(self):

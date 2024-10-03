@@ -1,5 +1,4 @@
 from collections import deque
-import random
 from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
 from lib.arguments.constants import (
@@ -162,8 +161,7 @@ class DownloadClientSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.__address)
+        self.__socket.sendto(packet.encode(), self.__address)
 
         self.__last_packet_created = packet
 

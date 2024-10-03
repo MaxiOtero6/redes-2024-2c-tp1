@@ -1,5 +1,4 @@
 import queue
-import random
 import time
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
@@ -79,8 +78,7 @@ class ClientHandlerSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.address)
+        self.__socket.sendto(packet.encode(), self.address)
         self.__last_packet_sent = packet
 
     def __send_ack(self):

@@ -2,7 +2,6 @@
 import os
 import queue
 from collections import deque
-import random
 import time
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
@@ -244,8 +243,7 @@ class ClientHandlerSACK:
 
     def __send_packet(self, packet: SACKPacket):
         """Send a packet to the client."""
-        if random.random() < 0.1:
-            self.__socket.sendto(packet.encode(), self.address)
+        self.__socket.sendto(packet.encode(), self.address)
 
         if self.__last_packet_received.dwl:
             self.__unacked_packets.append((packet, time.time()))
