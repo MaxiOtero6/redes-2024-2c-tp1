@@ -160,21 +160,20 @@ class UploadClientSW:
 
     def run(self):
         try:
-            print("Starting file upload")
+            self.__check_file_in_fs()
             print("Starting file upload")
             self.__send_comm_start()
             self.__send_file_name()
             self.__send_file_data()
             self.__send_comm_fin()
             print(f"File sent: {self.__config.FILE_NAME}")
+            self.__skt.close()
         except BrokenPipeError as e:
             print(str(e))
             self.__skt.close()
             exit()
-
         except FileNotFoundError as e:
             print("Error: ", e)
             print("File not found or path is incorrect, please check the path and try again")
             print("Closing connection")
-
-        self.__skt.close()
+            self.__skt.close()
