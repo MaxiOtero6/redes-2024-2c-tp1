@@ -24,7 +24,7 @@ class ClientHandlerSW:
             return 0
         return 1 - self.__last_packet_sent.seq_number
 
-    def __last_recived_seq_number(self):
+    def __last_received_seq_number(self):
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
@@ -33,8 +33,7 @@ class ClientHandlerSW:
     def __last_packet_is_new(self):
         """Check if the last packet received is new."""
         return (
-            self.__last_packet_received.seq_number
-            != self.__last_packet_sent.ack_number
+            self.__last_packet_received.seq_number != self.__last_packet_sent.ack_number
         )
 
     def __last_packet_sent_was_ack(self):
@@ -48,7 +47,7 @@ class ClientHandlerSW:
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SWPacket(
             self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+            self.__last_received_seq_number(),
             syn,
             fin,
             ack,
@@ -106,9 +105,7 @@ class ClientHandlerSW:
         """Wait for data from the client."""
         self.__get_packet()
 
-        while not (
-            self.__last_packet_received.upl and self.__last_packet_is_new()
-        ):
+        while not (self.__last_packet_received.upl and self.__last_packet_is_new()):
             print("Waiting for data")
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
@@ -135,12 +132,12 @@ class ClientHandlerSW:
         """Send file data to the client."""
         with open(file_path, "rb") as file:
             data = file.read(MAX_PAYLOAD_SIZE)
-            first_packet = True
+            is_first_packet = True
             while len(data) > 0:
                 data_packet = self.__create_new_packet(
                     False,
                     False,
-                    first_packet,
+                    is_first_packet,
                     False,
                     True,
                     data,
@@ -152,7 +149,7 @@ class ClientHandlerSW:
                 #time.sleep(0.1)
 
                 data = file.read(MAX_PAYLOAD_SIZE)
-                first_packet = False
+                is_first_packet = False
 
     def __recieve_file_data(self, file_path):
         # To create / overwrite the file
@@ -224,10 +221,7 @@ class ClientHandlerSW:
             self.__get_packet()
             file_name: str = ""
 
-            if (
-                self.__last_packet_received.upl
-                or self.__last_packet_received.dwl
-            ):
+            if self.__last_packet_received.upl or self.__last_packet_received.dwl:
                 file_name = self.__handle_file_name()
             else:
                 raise Exception("Invalid request")

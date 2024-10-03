@@ -10,6 +10,7 @@ from lib.errors.unknown_algorithm import UnknownAlgorithm
 
 WORKERS = max(os.cpu_count(), 4)
 
+
 class Server:
     def __init__(self, config: ServerConfig):
         self.__config = config
@@ -33,9 +34,7 @@ class Server:
                 )
 
             case _:
-                raise UnknownAlgorithm(
-                    f"Unknown algorithm: {self.__config.ALGORITHM}"
-                )
+                raise UnknownAlgorithm(f"Unknown algorithm: {self.__config.ALGORITHM}")
 
     def __listener(self):
         """Listen for packets and route them to the correct client handler."""
@@ -46,10 +45,7 @@ class Server:
         )
 
         while True:
-            data, address = self.__skt.recvfrom(
-                MAX_EXPECTED_PACKET_SIZE
-            )
-            print(address)
+            data, address = self.__skt.recvfrom(MAX_EXPECTED_PACKET_SIZE)
             if address not in self.__clients_handlers:
                 client = self.__create_client(address)
                 self.__clients_handlers[address] = client

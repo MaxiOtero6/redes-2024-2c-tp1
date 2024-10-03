@@ -1,4 +1,5 @@
 import os
+import random
 from lib.packets.sw_packet import SWPacket
 from lib.client.upload_config import UploadConfig
 from lib.arguments.constants import (
@@ -25,7 +26,7 @@ class UploadClientSW:
             return 0
         return 1 - self.__last_packet_sent.seq_number
 
-    def __last_recived_seq_number(self):
+    def __last_received_seq_number(self):
         """Get the last received sequence number."""
         if self.__last_packet_received is None:
             return 0
@@ -42,7 +43,7 @@ class UploadClientSW:
     def __create_new_packet(self, syn, fin, ack, upl, dwl, payload):
         return SWPacket(
             self.__next_seq_number(),
-            self.__last_recived_seq_number(),
+            self.__last_received_seq_number(),
             syn,
             fin,
             ack,
@@ -75,8 +76,8 @@ class UploadClientSW:
 
     def __send_packet(self, packet):
         """Send a packet to the client."""
-        self.__skt.settimeout(0)
-        self.__skt.sendto(packet.encode(), self.__address)
+        if random.random() < 0.8:
+            self.__skt.sendto(packet.encode(), self.__address)
         self.__last_packet_sent = packet
 
     def __wait_for_ack(self):
