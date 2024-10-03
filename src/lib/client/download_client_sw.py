@@ -4,7 +4,6 @@ from lib.arguments.constants import (
     MAX_PACKET_SIZE_SW,
     MAX_TIMEOUT_COUNT,
 )
-from lib.arguments.constants import MAX_PACKET_SIZE_SW
 from lib.errors.invalid_file_name import InvalidFileName
 import socket
 
@@ -127,7 +126,10 @@ class DownloadClientSW:
     def __file_name_acknowledged(self):
         self.__get_packet()
         file_name_acknowledged = True
-        while not self.__last_packet_received.fin and not self.__last_packet_sent_was_ack():
+        while (
+            not self.__last_packet_received.fin
+            and not self.__last_packet_sent_was_ack()
+        ):
             self.__send_packet(self.__last_packet_sent)
             self.__get_packet()
 
@@ -157,7 +159,9 @@ class DownloadClientSW:
             with open(file_path, "wb") as _:
                 pass
         else:
-            raise InvalidFileName(f"File name: {self.__config.FILE_NAME} was not found by server")
+            raise InvalidFileName(
+                f"File name: {self.__config.FILE_NAME} was not found by server"
+            )
 
     def __save_file_data(self, file_path):
         with open(file_path, "ab") as file:

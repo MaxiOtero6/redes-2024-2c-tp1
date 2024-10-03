@@ -1,4 +1,3 @@
-import os
 from collections import deque
 from lib.packets.sack_packet import SACKPacket
 from lib.client.download_config import DownloadConfig
@@ -245,7 +244,10 @@ class DownloadClientSACK:
         self.__get_packet()
 
         file_name_acknowledged = True
-        while not self.__last_packet_received.fin and not self.__last_packet_sent_was_ack():
+        while (
+            not self.__last_packet_received.fin
+            and not self.__last_packet_sent_was_ack()
+        ):
             self.__send_packet(self.__last_packet_created)
             self.__get_packet()
 
@@ -278,13 +280,16 @@ class DownloadClientSACK:
             with open(file_path, "wb") as _:
                 pass
         else:
-            raise InvalidFileName(f"File name: {self.__config.FILE_NAME} was not found by server")
+            raise InvalidFileName(
+                f"File name: {self.__config.FILE_NAME} was not found by server"
+            )
 
     def __save_file_data(self, file_path):
         """Save file data received from the client."""
         with open(file_path, "ab") as file:
             while self.__in_order_packets:
                 packet = self.__in_order_packets.popleft()
+                print(f"Received packet of size {len(packet.payload)}")
                 file.write(packet.payload)
 
     def __receive_file_data(self):
@@ -301,11 +306,6 @@ class DownloadClientSACK:
             self.__wait_for_data()
 
         self.__send_ack()
-
-    def __check_file_in_fs(self):
-        """Check if the file exists in the file system."""
-        if not os.path.exists(self.__config.SOURCE_PATH):
-            raise FileNotFoundError(f"File not found: {self.__config.SOURCE_PATH}")
 
     def run(self):
         try:

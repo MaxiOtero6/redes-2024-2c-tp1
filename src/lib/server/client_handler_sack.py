@@ -457,7 +457,6 @@ class ClientHandlerSACK:
 
     def __handle_file_name(self):
         """Receive and handle the file name."""
-        # file_name = self.__last_packet_received.payload.decode()
         file_name = self.__in_order_packets.popleft().payload.decode()
         return file_name
 
@@ -510,6 +509,4 @@ class ClientHandlerSACK:
 
 
 def print_sent_progress(data_sent, file_length):
-    print(
-        f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"  # noqa
-    )
+    print(f"Sent packet of size {round(data_sent / file_length * 100, 2)}%")  # noqa
