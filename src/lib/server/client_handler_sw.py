@@ -1,9 +1,13 @@
 import queue
+import time
+import os
+from lib.arguments.constants import MAX_PAYLOAD_SIZE
 from lib.arguments.constants import (
     MAX_PAYLOAD_SIZE,
     MAX_TIMEOUT_COUNT,
 )
 from lib.packets.sw_packet import SWPacket
+from lib.errors.invalid_file_name import InvalidFileName
 
 
 class ClientHandlerSW:
@@ -144,7 +148,7 @@ class ClientHandlerSW:
                 data = file.read(MAX_PAYLOAD_SIZE)
                 is_first_packet = False
 
-    def __recieve_file_data(self, file_path):
+    def __receive_file_data(self, file_path):
         # To create / overwrite the file
         with open(file_path, "wb") as _:
             pass
@@ -177,15 +181,27 @@ class ClientHandlerSW:
         file_path = f"{self.__folder_path}/{file_name}"
         print(f"Receiving file: {file_name}")
 
-        self.__recieve_file_data(file_path)
+        self.__receive_file_data(file_path)
+
+    def __check_file_in_fs(self, file_name):
+        """Check if the file exists in the file system."""
+        file_path = f"{self.__folder_path}/{file_name}"
+        if not os.path.exists(file_path):
+            raise InvalidFileName("File does not exist")
+        return file_path
 
     def __handle_dwl(self, file_name):
         """Handle a download packet."""
-        file_path = f"{self.__folder_path}/{file_name}"
-        print(f"Sending file: {file_name}")
-
-        self.__send_file_data(file_path)
-        self.__send_fin()
+        try:
+            file_path = self.__check_file_in_fs(file_name)
+            print(f"Sending file: {file_name}")
+            self.__send_file_data(file_path)
+            self.__send_fin()
+        except InvalidFileName as e:
+            print("Failed with error:", e)
+            print("No file found with the name:", file_name)
+            print("Sending comm fin to client")
+            self.__send_fin()
 
     def __handle_fin(self):
         """Handle the final FIN packet."""

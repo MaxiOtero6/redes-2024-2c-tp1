@@ -1,4 +1,3 @@
-# import debugpy
 import os
 import queue
 from collections import deque
@@ -8,8 +7,10 @@ from lib.arguments.constants import (
     MAX_TIMEOUT_COUNT,
 )
 from lib.packets.sack_packet import SACKPacket
+from lib.errors.invalid_file_name import InvalidFileName
 
 SEQUENCE_NUMBER_LIMIT = 2**32
+
 RWND = MAX_PAYLOAD_SIZE * 2
 
 
@@ -84,8 +85,8 @@ class ClientHandlerSACK:
         ack_number = self.__last_packet_received.ack_number
         end_of_packet = self.__start_of_next_seq(packet)
 
-        diference = abs(end_of_packet - ack_number)
-        if diference > SEQUENCE_NUMBER_LIMIT / 2:
+        difference = abs(end_of_packet - ack_number)
+        if difference > SEQUENCE_NUMBER_LIMIT / 2:
             if ack_number < end_of_packet:
                 ack_number += SEQUENCE_NUMBER_LIMIT
             else:
@@ -397,7 +398,7 @@ class ClientHandlerSACK:
                 self.__wait_for_ack()
                 print("Ack received for packet")
 
-    def __recieve_file_data(self, file_path):
+    def __receive_file_data(self, file_path):
         # To create / overwrite the file
         with open(file_path, "wb") as _:
             pass
@@ -431,15 +432,27 @@ class ClientHandlerSACK:
         file_path = f"{self.__folder_path}/{file_name}"
         print(f"Receiving file: {file_name}")
 
-        self.__recieve_file_data(file_path)
+        self.__receive_file_data(file_path)
+
+    def __check_file_in_fs(self, file_name):
+        """Check if the file exists in the file system."""
+        file_path = f"{self.__folder_path}/{file_name}"
+        if not os.path.exists(file_path):
+            raise InvalidFileName("File does not exist")
+        return file_path
 
     def __handle_dwl(self, file_name):
         """Handle a download packet."""
-        file_path = f"{self.__folder_path}/{file_name}"
-        print(f"Sending file: {file_name}")
-
-        self.__send_file_data(file_path)
-        self.__send_fin()
+        try:
+            file_path = self.__check_file_in_fs(file_name)
+            print(f"Sending file: {file_name}")
+            self.__send_file_data(file_path)
+            self.__send_fin()
+        except InvalidFileName as e:
+            print("Failed with error:", e)
+            print("No file found with the name:", file_name)
+            print("Sending comm fin to client")
+            self.__send_fin()
 
     def __handle_fin(self):
         """Handle the final FIN packet."""

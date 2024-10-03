@@ -69,7 +69,13 @@ class Server:
         print("Client disconnected, ", address)
         del self.__clients_handlers[address]
 
+    def __check_storage_dir(self):
+        """Check if the storage directory exists and create it if it doesn't."""
+        if not os.path.exists(self.__config.STORAGE_DIR_PATH):
+            os.makedirs(self.__config.STORAGE_DIR_PATH)
+
     def run(self):
         """Main server function."""
         print("Server started")
+        self.__check_storage_dir()
         self.__listener()
