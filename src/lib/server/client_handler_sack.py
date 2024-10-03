@@ -226,8 +226,6 @@ class ClientHandlerSACK:
 
         except (queue.Empty, Exception):
             self.__timeout_count += 1
-            print(f"Timeout number: {self.__timeout_count}")
-
             if self.__timeout_count >= MAX_TIMEOUT_COUNT:
                 raise BrokenPipeError(
                     f"Max timeouts reached. Closing connection {self.address}"  # noqa
@@ -396,7 +394,6 @@ class ClientHandlerSACK:
                     is_first_packet = False
 
                 self.__wait_for_ack()
-                print("Ack received for packet")
 
     def __receive_file_data(self, file_path):
         # To create / overwrite the file

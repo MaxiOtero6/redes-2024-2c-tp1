@@ -135,7 +135,6 @@ class UploadClientSW:
                     f"Sent packet of size {round(data_sent / file_length * 100, 2)}% {data_sent}/{file_length}"  # noqa
                 )
                 self.__wait_for_ack()
-                print("Ack received for packet")
                 data = file.read(MAX_PAYLOAD_SIZE)
 
     def __send_comm_fin(self):
@@ -173,6 +172,8 @@ class UploadClientSW:
             exit()
         except FileNotFoundError as e:
             print("Error: ", e)
-            print("File not found or path is incorrect, please check the path and try again")
+            print(
+                "File not found or path is incorrect, please check the path and try again"
+            )
             print("Closing connection")
             self.__skt.close()

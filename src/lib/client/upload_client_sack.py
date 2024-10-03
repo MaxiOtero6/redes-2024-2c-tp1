@@ -249,9 +249,6 @@ class UploadClientSACK:
                     data = file.read(MAX_PAYLOAD_SIZE)
 
                 self.__wait_for_ack()
-                print(
-                    f"Ack received for packet {self.__last_packet_received.seq_number}"
-                )
 
     def __send_comm_fin(self):
         fin_packet = self.__create_new_packet(
